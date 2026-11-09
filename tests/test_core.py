@@ -1,0 +1,107 @@
+import os
+import tempfile
+import unittest
+
+from tests.helpers import make_sample_project  # noqa: F401  (sets sys.path)
+
+from xzagent.gitignore import GitignoreMatcher
+from xzagent.graph import build_edges, call_graph, neighbors
+from xzagent.index import build_index, connect
+from xzagent.map import repo_map
+from xzagent.packer import build_pack
+from xzagent.rank import rank_files
+from xzagent.scanner import scan
+from xzagent.symbols import extract
+
+
+class TestGitignore(unittest.TestCase):
+    def test_dir_and_glob(self):
+        m = GitignoreMatcher()
+        m.add_gitignore("/r", "ignored_dir/\n*.log\n!keep.log\n")
+        self.assertTrue(m.is_ignored("/r", "/r/ignored_dir", True))
+        self.assertTrue(m.is_ignored("/r", "/r/ignored_dir/x.py", False))
+        self.assertTrue(m.is_ignored("/r", "/r/a/debug.log", False))
+        self.assertFalse(m.is_ignored("/r", "/r/a/keep.log", False))
+        self.assertFalse(m.is_ignored("/r", "/r/a/main.py", False))
+
+
+class TestScannerSymbols(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = make_sample_project(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_scan_respects_gitignore(self):
+        paths = {f.path for f in scan(self.root)}
+        self.assertIn("app/auth.py", paths)
+        self.assertIn("web/script.js", paths)
+        self.assertNotIn("ignored_dir/secret.py", paths)
+        self.assertNotIn("debug.log", paths)
+
+    def test_python_symbols(self):
+        with open(os.path.join(self.root, "app/auth.py")) as fh:
+            symbols, imports, calls, summary = extract(fh.read(), "python")
+        names = {n for _, n, _ in symbols}
+        self.assertIn("login", names)
+        self.assertIn("logout", names)
+        self.assertEqual(summary, "Authentication module.")
+
+    def test_js_symbols(self):
+        with open(os.path.join(self.root, "web/api.js")) as fh:
+            symbols, imports, calls, _ = extract(fh.read(), "javascript")
+        self.assertIn("fetchUser", {n for _, n, _ in symbols})
+        with open(os.path.join(self.root, "web/script.js")) as fh:
+            js_imports = extract(fh.read(), "javascript")[1]
+        self.assertTrue(any(m == "./api" for m, _ in js_imports))
+
+
+class TestIndexRankGraph(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = make_sample_project(self.tmp.name)
+        self.db = build_index(self.root)
+        self.con = connect(self.db)
+
+    def tearDown(self):
+        self.con.close()
+        self.tmp.cleanup()
+
+    def test_rank_finds_auth_for_login_task(self):
+        ranked = rank_files(self.con, "fix login authentication bug", top_k=5)
+        paths = [p for p, _, _ in ranked]
+        self.assertIn("app/auth.py", paths[:3])
+        self.assertEqual(paths[0], "app/auth.py")
+
+    def test_rank_finds_js_for_render_task(self):
+        ranked = rank_files(self.con, "render user profile in frontend", top_k=5)
+        paths = [p for p, _, _ in ranked]
+        self.assertTrue(any(p.startswith("web/") for p in paths[:3]))
+
+    def test_import_edges(self):
+        n = neighbors(self.con, "app/main.py")
+        others = {x["other"] for x in n if x["kind"] == "import"}
+        self.assertIn("app/auth.py", others)
+        self.assertIn("app/utils.py", others)
+
+    def test_js_import_edge(self):
+        n = neighbors(self.con, "web/script.js")
+        self.assertIn("web/api.js", {x["other"] for x in n})
+
+    def test_call_graph(self):
+        cg = call_graph(self.con, "login")
+        self.assertIn("app/auth.py", [d["file"] for d in cg["definitions"]])
+        self.assertIn("app/main.py", cg["callers"])
+
+    def test_repo_map_and_pack(self):
+        m = repo_map(self.con)
+        self.assertIn("app/auth.py", m)
+        self.assertIn("login", m)
+        pack = build_pack(self.con, self.root, "login bug", top_k=3)
+        self.assertIn("app/auth.py", pack)
+        self.assertIn("Context Pack", pack)
+
+
+if __name__ == "__main__":
+    unittest.main()
