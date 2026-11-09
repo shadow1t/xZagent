@@ -1,0 +1,144 @@
+import json
+import os
+import sys
+
+from .graph import call_graph, neighbors
+from .index import connect, default_db_path, ensure_index
+from .map import repo_map
+from .packer import build_pack
+from .rank import rank_files
+
+PROTOCOL_VERSION = "2024-11-05"
+
+TOOLS = [
+    {
+        "name": "repo_map",
+        "description": "Compressed map of the whole project: file tree plus key symbols per file.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "find_files",
+        "description": "Rank the most relevant files for a natural-language task (offline BM25 + graph boost).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task": {"type": "string", "description": "What the agent is trying to do or fix"},
+                "top_k": {"type": "integer", "default": 8},
+            },
+            "required": ["task"],
+        },
+    },
+    {
+        "name": "file_outline",
+        "description": "List classes/functions defined in a file.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"path": {"type": "string"}},
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "call_graph",
+        "description": "Where a symbol is defined, who calls it, and what file it lives in.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"symbol": {"type": "string"}},
+            "required": ["symbol"],
+        },
+    },
+    {
+        "name": "neighbors",
+        "description": "Files linked to a file via imports or calls.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"path": {"type": "string"}},
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "context_pack",
+        "description": "Full markdown context pack for a task: relevant files + repo map + excerpts.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task": {"type": "string"},
+                "top_k": {"type": "integer", "default": 8},
+            },
+            "required": ["task"],
+        },
+    },
+]
+
+
+class Server:
+    def __init__(self, root, db_path=None):
+        self.root = os.path.abspath(root)
+        self.db = ensure_index(self.root, db_path)
+        self.con = connect(self.db)
+
+    def call(self, name, args):
+        if name == "repo_map":
+            return repo_map(self.con)
+        if name == "find_files":
+            ranked = rank_files(self.con, args.get("task", ""), top_k=int(args.get("top_k", 8)))
+            return json.dumps(ranked, indent=2)
+        if name == "file_outline":
+            rows = self.con.execute(
+                "SELECT kind, name, lineno FROM symbols WHERE file=? AND kind IN ('class','function') ORDER BY lineno",
+                (args.get("path", ""),),
+            ).fetchall()
+            return json.dumps([dict(r) for r in rows], indent=2)
+        if name == "call_graph":
+            return json.dumps(call_graph(self.con, args.get("symbol", "")), indent=2)
+        if name == "neighbors":
+            return json.dumps(neighbors(self.con, args.get("path", "")), indent=2)
+        if name == "context_pack":
+            return build_pack(self.con, self.root, args.get("task", ""), top_k=int(args.get("top_k", 8)))
+        raise ValueError("unknown tool: %s" % name)
+
+
+def serve(root, db_path=None):
+    """Minimal MCP stdio server (newline-delimited JSON-RPC 2.0)."""
+    server = Server(root, db_path)
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if "id" not in msg:
+            continue
+        method = msg.get("method", "")
+        try:
+            if method == "initialize":
+                result = {
+                    "protocolVersion": msg.get("params", {}).get("protocolVersion", PROTOCOL_VERSION),
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "xzagent", "version": "0.1.0"},
+                }
+            elif method == "ping":
+                result = {}
+            elif method == "tools/list":
+                result = {"tools": TOOLS}
+            elif method == "tools/call":
+                params = msg.get("params", {})
+                result = {
+                    "content": [{"type": "text", "text": server.call(params.get("name", ""), params.get("arguments", {}))}],
+                    "isError": False,
+                }
+            else:
+                resp = {"jsonrpc": "2.0", "id": msg["id"],
+                        "error": {"code": -32601, "message": "Method not found"}}
+                sys.stdout.write(json.dumps(resp) + "\n")
+                sys.stdout.flush()
+                continue
+        except Exception as exc:
+            resp = {"jsonrpc": "2.0", "id": msg["id"],
+                    "error": {"code": -32603, "message": str(exc)}}
+            sys.stdout.write(json.dumps(resp) + "\n")
+            sys.stdout.flush()
+            continue
+        sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": result}) + "\n")
+        sys.stdout.flush()
