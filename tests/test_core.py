@@ -94,6 +94,10 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("app/auth.py", [d["file"] for d in cg["definitions"]])
         self.assertIn("app/main.py", cg["callers"])
 
+    def test_path_match_ranks_first(self):
+        ranked = rank_files(self.con, "web api fetch", top_k=5)
+        self.assertEqual(ranked[0][0], "web/api.js")
+
     def test_word_boundary_no_false_positive(self):
         ranked = rank_files(self.con, "fix", top_k=10)
         paths = [p for p, _, _ in ranked]
