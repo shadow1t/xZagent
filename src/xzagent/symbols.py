@@ -92,9 +92,12 @@ def _regex_extract(text, lang):
             m = re.search(pat, line)
             if m:
                 name = m.group(1)
-                if name.lower() not in _KEYWORDS and not line[: m.start(1)].rstrip().endswith("."):
-                    kind = "class" if ("class" in pat or "struct" in pat or "enum" in pat or "interface" in pat or "type" in pat) else "function"
-                    symbols.append((kind, name, i))
+                kind = "class" if ("class" in pat or "struct" in pat or "enum" in pat or "interface" in pat or "type" in pat) else "function"
+                if name.lower() in _KEYWORDS or line[: m.start(1)].rstrip().endswith("."):
+                    break
+                if lang == "dart" and kind == "function" and name[:1].isupper():
+                    break
+                symbols.append((kind, name, i))
                 break
         for pat in _IMPORT_RES.get(lang, []):
             m = re.search(pat, line)

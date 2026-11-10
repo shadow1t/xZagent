@@ -88,6 +88,13 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("package:app_name/services/storage.dart", {m for m, _ in imports})
         self.assertIn("services/utils.dart", {m for m, _ in imports})
 
+    def test_dart_uppercase_calls_excluded(self):
+        snippet = "void main() {\n  ChangeNotifierProvider(create: (_) => 1) {}\n}\n"
+        symbols, _, _, _ = extract(snippet, "dart")
+        names = {n for _, n, _ in symbols}
+        self.assertIn("main", names)
+        self.assertNotIn("ChangeNotifierProvider", names)
+
     def test_dart_keywords_not_symbols(self):
         with open(os.path.join(self.root, "lib/main.dart")) as fh:
             symbols, _, _, _ = extract(fh.read(), "dart")
