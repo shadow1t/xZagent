@@ -30,13 +30,20 @@ def rank_files(con, query, top_k=10, graph_boost=True):
         ).fetchall():
             add(row["path"], row["s"], "content match")
     toks = _tokens(query)
+
+    def _word_hit(text, t):
+        return re.search(r"(?<![\w])" + re.escape(t) + r"(?![\w])", text, re.IGNORECASE) is not None
+
     for t in toks:
         for row in con.execute("SELECT path FROM files WHERE path LIKE ?", ("%" + t + "%",)).fetchall():
-            add(row["path"], -2.0, "path contains '%s'" % t)
-        for row in con.execute("SELECT DISTINCT file FROM symbols WHERE name LIKE ?", ("%" + t + "%",)).fetchall():
-            add(row["file"], -5.0, "symbol contains '%s'" % t)
-        for row in con.execute("SELECT path FROM files WHERE summary LIKE ?", ("%" + t + "%",)).fetchall():
-            add(row["path"], -3.0, "summary contains '%s'" % t)
+            if _word_hit(row["path"], t):
+                add(row["path"], -2.0, "path contains '%s'" % t)
+        for row in con.execute("SELECT DISTINCT file, name FROM symbols WHERE name LIKE ?", ("%" + t + "%",)).fetchall():
+            if _word_hit(row["name"], t):
+                add(row["file"], -5.0, "symbol contains '%s'" % t)
+        for row in con.execute("SELECT path, summary FROM files WHERE summary LIKE ?", ("%" + t + "%",)).fetchall():
+            if _word_hit(row["summary"] or "", t):
+                add(row["path"], -3.0, "summary contains '%s'" % t)
     if graph_boost and scores:
         strong = sorted(scores, key=scores.get)[: max(3, top_k // 2)]
         for path in strong:

@@ -33,6 +33,10 @@ def logout(user):
 
 def helper():
     return 42
+
+
+def prefix_helper():
+    return "x"
 ''',
     "web/script.js": '''import { fetchUser } from './api';
 
