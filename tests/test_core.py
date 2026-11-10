@@ -88,6 +88,25 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("package:app_name/services/storage.dart", {m for m, _ in imports})
         self.assertIn("services/utils.dart", {m for m, _ in imports})
 
+    def test_dart_keywords_not_symbols(self):
+        with open(os.path.join(self.root, "lib/main.dart")) as fh:
+            symbols, _, _, _ = extract(fh.read(), "dart")
+        fn_names = {n for k, n, _ in symbols if k == "function"}
+        self.assertIn("main", fn_names)
+        self.assertNotIn("if", fn_names)
+
+    def test_ensure_index_rebuilds_on_change(self):
+        from xzagent.index import ensure_index
+        db = build_index(self.root)
+        self.assertEqual(ensure_index(self.root, db), db)
+        with open(os.path.join(self.root, "app/utils.py"), "a", encoding="utf-8") as fh:
+            fh.write("\n\ndef new_fn():\n    pass\n")
+        ensure_index(self.root, db)
+        con = connect(db)
+        names = {r["name"] for r in con.execute("SELECT name FROM symbols WHERE file='app/utils.py'")}
+        con.close()
+        self.assertIn("new_fn", names)
+
     def test_dart_import_edges_and_call_graph(self):
         n = neighbors(self.con, "lib/main.dart")
         others = {x["other"] for x in n if x["kind"] == "import"}

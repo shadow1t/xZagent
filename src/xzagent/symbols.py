@@ -76,6 +76,14 @@ _IMPORT_RES = {
 }
 
 
+_KEYWORDS = {
+    "if", "while", "for", "switch", "return", "else", "do", "catch", "finally",
+    "when", "throw", "new", "assert", "setstate", "print", "super", "this",
+    "await", "async", "sync", "class", "enum", "void", "func", "function",
+    "def", "let", "const", "var",
+}
+
+
 def _regex_extract(text, lang):
     symbols, imports, calls = [], [], []
     lines = text.splitlines()
@@ -83,8 +91,10 @@ def _regex_extract(text, lang):
         for pat in _SYMBOL_RES.get(lang, []):
             m = re.search(pat, line)
             if m:
-                kind = "class" if ("class" in pat or "struct" in pat or "enum" in pat or "interface" in pat or "type" in pat) else "function"
-                symbols.append((kind, m.group(1), i))
+                name = m.group(1)
+                if name.lower() not in _KEYWORDS and not line[: m.start(1)].rstrip().endswith("."):
+                    kind = "class" if ("class" in pat or "struct" in pat or "enum" in pat or "interface" in pat or "type" in pat) else "function"
+                    symbols.append((kind, name, i))
                 break
         for pat in _IMPORT_RES.get(lang, []):
             m = re.search(pat, line)

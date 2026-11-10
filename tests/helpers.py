@@ -52,6 +52,7 @@ function render() {
 import 'services/utils.dart';
 
 void main() {
+  if (true) {}
   runApp();
 }
 

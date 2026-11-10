@@ -76,8 +76,22 @@ def build_index(root, db_path=None):
 
 
 def ensure_index(root, db_path=None, force=False):
+    """Return db_path, rebuilding automatically if any file changed since the last build."""
     if db_path is None:
         db_path = default_db_path(root)
     if force or not os.path.exists(db_path):
         return build_index(root, db_path)
+    try:
+        con = connect(db_path)
+        indexed = {r["path"]: (r["size"], r["mtime"]) for r in con.execute("SELECT path, size, mtime FROM files").fetchall()}
+        con.close()
+    except Exception:
+        return build_index(root, db_path)
+    scanned = scan(root)
+    if len(scanned) != len(indexed):
+        return build_index(root, db_path)
+    for f in scanned:
+        prev = indexed.get(f.path)
+        if prev is None or prev[0] != f.size or abs(prev[1] - f.mtime) > 1e-6:
+            return build_index(root, db_path)
     return db_path
