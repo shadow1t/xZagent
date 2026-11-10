@@ -50,19 +50,52 @@ def resolve_js_import(root, from_file, spec):
     return os.path.relpath(hit, root).replace(os.sep, "/") if hit else None
 
 
-def resolve_import(root, from_file, module, lang):
+def resolve_dart_import(root, from_file, spec, all_paths):
+    if spec.startswith("dart:"):
+        return None
+    if spec.startswith("package:"):
+        rest = spec.split("/", 1)[1] if "/" in spec else ""
+        cand = "lib/" + rest
+        return cand if cand in all_paths else None
+    if spec.startswith("file:"):
+        spec = spec[5:]
+    base_dir = os.path.dirname(os.path.join(root, from_file))
+    cand = os.path.normpath(os.path.join(base_dir, spec))
+    rel = os.path.relpath(cand, root).replace(os.sep, "/")
+    if not rel.endswith(".dart"):
+        rel += ".dart"
+    return rel if rel in all_paths else None
+
+
+def resolve_dotted_import(module, ext, all_paths):
+    rel = module.replace(".", "/") + ext
+    if rel in all_paths:
+        return rel
+    suffix = "/" + rel
+    for p in all_paths:
+        if p.endswith(suffix):
+            return p
+    return None
+
+
+def resolve_import(root, from_file, module, lang, all_paths):
     if lang == "python":
         return resolve_python_import(root, from_file, module)
     if lang in ("javascript", "typescript"):
         return resolve_js_import(root, from_file, module)
+    if lang == "dart":
+        return resolve_dart_import(root, from_file, module, all_paths)
+    if lang in ("kotlin", "java"):
+        return resolve_dotted_import(module, ".kt" if lang == "kotlin" else ".java", all_paths)
     return None
 
 
 def build_edges(con, root):
     """Persist import edges (file->file) and call edges (file->file, label=symbol)."""
+    all_paths = {r["path"] for r in con.execute("SELECT path FROM files").fetchall()}
     rows = con.execute("SELECT f.path, f.lang, i.module FROM imports i JOIN files f ON f.path = i.file").fetchall()
     for row in rows:
-        target = resolve_import(root, row["path"], row["module"], row["lang"])
+        target = resolve_import(root, row["path"], row["module"], row["lang"], all_paths)
         if target and target != row["path"]:
             con.execute("INSERT INTO edges VALUES (?,?,?,?)", (row["path"], target, "import", row["module"]))
     func_files = {}

@@ -48,6 +48,21 @@ function render() {
     return { id };
 }
 ''',
+    "lib/main.dart": """import 'package:app_name/services/storage.dart';
+import 'services/utils.dart';
+
+void main() {
+  runApp();
+}
+
+class MyApp {}
+""",
+    "lib/services/storage.dart": """class StorageService {
+  Future<void> saveFile() async {}
+}
+""",
+    "lib/services/utils.dart": """void helperFn() {}
+""",
     "README.md": "# Sample project\n\nA demo project for tests.\n",
     ".gitignore": "ignored_dir/\n*.log\n",
     "ignored_dir/secret.py": "def hidden():\n    pass\n",

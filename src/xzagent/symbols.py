@@ -45,6 +45,19 @@ _SYMBOL_RES = {
     "shell": [
         r"^\s*(?:function\s+)?([A-Za-z_]\w*)\s*\(\s*\)\s*\{",
     ],
+    "dart": [
+        r"^\s*(?:abstract\s+|final\s+|base\s+|interface\s+|sealed\s+|mixin\s+)*class\s+(\w+)",
+        r"^\s*enum\s+(\w+)",
+        r"^\s*(?:static\s+)?(?:[\w<>\[\]?, ]+\s+)?(\w+)\s*\([^;]*\)\s*(?:async\s*\*?|sync\s*\*?|\{|=>)",
+    ],
+    "kotlin": [
+        r"^\s*(?:@\w+\s+)*(?:(?:public|private|internal|protected|override|open|abstract|final|suspend|inline)\s+)*(?:class|interface|object)\s+(\w+)",
+        r"^\s*(?:@\w+\s+)*(?:(?:public|private|internal|protected|override|open|suspend|inline)\s+)*fun\s+(?:<[^>]+>\s*)?(\w+)",
+    ],
+    "swift": [
+        r"^\s*(?:@\w+\s+)*(?:(?:public|private|fileprivate|internal|open|final|override|static)\s+)*(?:class|struct|enum|protocol|actor)\s+(\w+)",
+        r"^\s*(?:@\w+\s+)*(?:(?:public|private|fileprivate|internal|override|static)\s+)*func\s+(\w+)",
+    ],
 }
 
 _IMPORT_RES = {
@@ -57,6 +70,9 @@ _IMPORT_RES = {
     "php": [r"^\s*(?:use|require|include)(?:_once)?\s+['\"\\]?([\w\\]+)"],
     "c": [r"^\s*#\s*include\s*[\"<]([^\">]+)[\">]"],
     "cpp": [r"^\s*#\s*include\s*[\"<]([^\">]+)[\">]"],
+    "dart": [r"^\s*import\s+['\"]([^'\"]+)['\"]", r"^\s*(?:part|export)\s+['\"]([^'\"]+)['\"]"],
+    "kotlin": [r"^\s*import\s+([\w.]+)"],
+    "swift": [r"^\s*(?:@\w+\s+)*import\s+(?:\w+\s+)?(\w+)"],
 }
 
 

@@ -79,6 +79,23 @@ class TestIndexRankGraph(unittest.TestCase):
         paths = [p for p, _, _ in ranked]
         self.assertTrue(any(p.startswith("web/") for p in paths[:3]))
 
+    def test_dart_symbols_and_imports(self):
+        with open(os.path.join(self.root, "lib/main.dart")) as fh:
+            symbols, imports, calls, _ = extract(fh.read(), "dart")
+        names = {n for _, n, _ in symbols}
+        self.assertIn("MyApp", names)
+        self.assertIn("main", names)
+        self.assertIn("package:app_name/services/storage.dart", {m for m, _ in imports})
+        self.assertIn("services/utils.dart", {m for m, _ in imports})
+
+    def test_dart_import_edges_and_call_graph(self):
+        n = neighbors(self.con, "lib/main.dart")
+        others = {x["other"] for x in n if x["kind"] == "import"}
+        self.assertIn("lib/services/storage.dart", others)
+        self.assertIn("lib/services/utils.dart", others)
+        cg = call_graph(self.con, "saveFile")
+        self.assertIn("lib/services/storage.dart", [d["file"] for d in cg["definitions"]])
+
     def test_import_edges(self):
         n = neighbors(self.con, "app/main.py")
         others = {x["other"] for x in n if x["kind"] == "import"}
