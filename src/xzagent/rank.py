@@ -31,8 +31,15 @@ def rank_files(con, query, top_k=10, graph_boost=True):
             add(row["path"], row["s"], "content match")
     toks = _tokens(query)
 
+    def _words(text):
+        parts = re.split(r"[^A-Za-z0-9]+", text or "")
+        words = []
+        for p in parts:
+            words.extend(re.findall(r"[A-Z]+(?![a-z])|[A-Z][a-z0-9]*|[a-z0-9]+", p))
+        return [w.lower() for w in words]
+
     def _word_hit(text, t):
-        return re.search(r"(?<![\w])" + re.escape(t) + r"(?![\w])", text, re.IGNORECASE) is not None
+        return t.lower() in _words(text)
 
     for t in toks:
         for row in con.execute("SELECT path FROM files WHERE path LIKE ?", ("%" + t + "%",)).fetchall():
