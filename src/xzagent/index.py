@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sqlite3
 import time
@@ -5,6 +6,15 @@ import time
 from .graph import build_edges
 from .scanner import scan
 from .symbols import extract
+
+
+def _code_version():
+    here = os.path.dirname(os.path.abspath(__file__))
+    h = hashlib.sha256()
+    for name in ("symbols.py", "scanner.py", "languages.py", "graph.py"):
+        with open(os.path.join(here, name), "rb") as fh:
+            h.update(fh.read())
+    return h.hexdigest()[:16]
 
 SCHEMA = """
 CREATE TABLE meta(k TEXT PRIMARY KEY, v TEXT);
@@ -69,6 +79,7 @@ def build_index(root, db_path=None):
     build_edges(con, root)
     con.execute("INSERT OR REPLACE INTO meta VALUES ('root', ?)", (root,))
     con.execute("INSERT OR REPLACE INTO meta VALUES ('built_at', ?)", (str(time.time()),))
+    con.execute("INSERT OR REPLACE INTO meta VALUES ('code_version', ?)", (_code_version(),))
     con.execute("INSERT OR REPLACE INTO meta VALUES ('file_count', ?)", (str(len(files)),))
     con.commit()
     con.close()
@@ -84,8 +95,11 @@ def ensure_index(root, db_path=None, force=False):
     try:
         con = connect(db_path)
         indexed = {r["path"]: (r["size"], r["mtime"]) for r in con.execute("SELECT path, size, mtime FROM files").fetchall()}
+        code_version = con.execute("SELECT v FROM meta WHERE k='code_version'").fetchone()
         con.close()
     except Exception:
+        return build_index(root, db_path)
+    if code_version is None or code_version["v"] != _code_version():
         return build_index(root, db_path)
     scanned = scan(root)
     if len(scanned) != len(indexed):

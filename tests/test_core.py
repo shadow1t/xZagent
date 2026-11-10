@@ -107,6 +107,19 @@ class TestIndexRankGraph(unittest.TestCase):
         con.close()
         self.assertIn("new_fn", names)
 
+    def test_code_version_triggers_rebuild(self):
+        from unittest import mock
+
+        import xzagent.index as ix
+        db = build_index(self.root)
+        with mock.patch.object(ix, "_code_version", return_value="v-old"):
+            ix.build_index(self.root, db)
+        ix.ensure_index(self.root, db)
+        con = connect(db)
+        v = con.execute("SELECT v FROM meta WHERE k='code_version'").fetchone()["v"]
+        con.close()
+        self.assertNotEqual(v, "v-old")
+
     def test_dart_import_edges_and_call_graph(self):
         n = neighbors(self.con, "lib/main.dart")
         others = {x["other"] for x in n if x["kind"] == "import"}
