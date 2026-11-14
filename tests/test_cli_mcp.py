@@ -74,6 +74,12 @@ class TestMcp(unittest.TestCase):
             {"jsonrpc": "2.0", "id": 6, "method": "tools/call",
              "params": {"name": "file_outline",
                         "arguments": {"path": self.root.replace("\\", "/") + "/app/auth.py"}}},
+            {"jsonrpc": "2.0", "id": 7, "method": "tools/call",
+             "params": {"name": "file_outline",
+                        "arguments": {"file_path": "app_name/app/auth.py".replace("app_name", self.root.replace("\\", "/").split("/")[-1])}}},
+            {"jsonrpc": "2.0", "id": 8, "method": "tools/call",
+             "params": {"name": "find_files",
+                        "arguments": {"query": "login authentication bug", "top_k": 3}}},
         ]
         proc = subprocess.run(
             [sys.executable, "-m", "xzagent", "serve", self.root],
@@ -97,6 +103,10 @@ class TestMcp(unittest.TestCase):
         names = {r["name"] for r in outline_rel}
         self.assertIn("login", names)
         self.assertEqual(outline_abs, outline_rel)
+        outline_prefixed = json.loads(by_id[7]["result"]["content"][0]["text"])
+        self.assertEqual(outline_prefixed, outline_rel)
+        ranked_q = json.loads(by_id[8]["result"]["content"][0]["text"])
+        self.assertEqual(ranked_q[0][0], "app/auth.py")
 
 
 if __name__ == "__main__":

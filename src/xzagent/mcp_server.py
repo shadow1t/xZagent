@@ -76,15 +76,22 @@ def normalize_path(root, path):
         return path
     p = path.replace("\\", "/").strip()
     root_abs = os.path.abspath(root).replace("\\", "/")
-    if p.startswith(root_abs):
+    if p.lower().startswith(root_abs.lower()):
         p = p[len(root_abs):]
     p = p.lstrip("/")
     base = os.path.basename(root_abs.rstrip("/"))
-    if p == base:
+    if p.lower() == base.lower():
         return ""
-    if p.startswith(base + "/"):
+    if p.lower().startswith((base + "/").lower()):
         p = p[len(base) + 1:]
     return p
+
+
+def _arg(args, *names, default=""):
+    for n in names:
+        if args.get(n):
+            return args[n]
+    return default
 
 
 class Server:
@@ -97,10 +104,10 @@ class Server:
         if name == "repo_map":
             return repo_map(self.con)
         if name == "find_files":
-            ranked = rank_files(self.con, args.get("task", ""), top_k=int(args.get("top_k", 8)))
+            ranked = rank_files(self.con, _arg(args, "task", "query"), top_k=int(args.get("top_k", 8)))
             return json.dumps(ranked, indent=2)
         if name == "file_outline":
-            path = normalize_path(self.root, args.get("path", ""))
+            path = normalize_path(self.root, _arg(args, "path", "file_path", "file"))
             rows = self.con.execute(
                 "SELECT kind, name, lineno FROM symbols WHERE file=? AND kind IN ('class','function') ORDER BY lineno",
                 (path,),
@@ -109,10 +116,10 @@ class Server:
         if name == "call_graph":
             return json.dumps(call_graph(self.con, args.get("symbol", "")), indent=2)
         if name == "neighbors":
-            path = normalize_path(self.root, args.get("path", ""))
+            path = normalize_path(self.root, _arg(args, "path", "file_path", "file"))
             return json.dumps(neighbors(self.con, path), indent=2)
         if name == "context_pack":
-            return build_pack(self.con, self.root, args.get("task", ""), top_k=int(args.get("top_k", 8)))
+            return build_pack(self.con, self.root, _arg(args, "task", "query"), top_k=int(args.get("top_k", 8)))
         raise ValueError("unknown tool: %s" % name)
 
 
