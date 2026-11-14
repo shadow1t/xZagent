@@ -80,6 +80,9 @@ class TestMcp(unittest.TestCase):
             {"jsonrpc": "2.0", "id": 8, "method": "tools/call",
              "params": {"name": "find_files",
                         "arguments": {"query": "login authentication bug", "top_k": 3}}},
+            {"jsonrpc": "2.0", "id": 9, "method": "tools/call",
+             "params": {"name": "call_graph",
+                        "arguments": {"file_path": "app/main.py", "symbol_name": "login"}}},
         ]
         proc = subprocess.run(
             [sys.executable, "-m", "xzagent", "serve", self.root],
@@ -107,6 +110,9 @@ class TestMcp(unittest.TestCase):
         self.assertEqual(outline_prefixed, outline_rel)
         ranked_q = json.loads(by_id[8]["result"]["content"][0]["text"])
         self.assertEqual(ranked_q[0][0], "app/auth.py")
+        cg_alias = json.loads(by_id[9]["result"]["content"][0]["text"])
+        self.assertEqual(cg_alias["symbol"], "login")
+        self.assertIn("app/main.py", cg_alias["callers"])
 
 
 if __name__ == "__main__":

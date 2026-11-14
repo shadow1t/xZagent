@@ -114,7 +114,7 @@ class Server:
             ).fetchall()
             return json.dumps([dict(r) for r in rows], indent=2)
         if name == "call_graph":
-            return json.dumps(call_graph(self.con, args.get("symbol", "")), indent=2)
+            return json.dumps(call_graph(self.con, _arg(args, "symbol", "symbol_name", "name", "function")), indent=2)
         if name == "neighbors":
             path = normalize_path(self.root, _arg(args, "path", "file_path", "file"))
             return json.dumps(neighbors(self.con, path), indent=2)
