@@ -30,7 +30,7 @@ TOOLS = [
     },
     {
         "name": "file_outline",
-        "description": "List classes/functions defined in a file.",
+        "description": "List classes/functions defined in a file. Path relative to project root (absolute path also accepted).",
         "inputSchema": {
             "type": "object",
             "properties": {"path": {"type": "string"}},
@@ -48,7 +48,7 @@ TOOLS = [
     },
     {
         "name": "neighbors",
-        "description": "Files linked to a file via imports or calls.",
+        "description": "Files linked to a file via imports or calls. Path relative to project root (absolute also accepted).",
         "inputSchema": {
             "type": "object",
             "properties": {"path": {"type": "string"}},
@@ -70,6 +70,23 @@ TOOLS = [
 ]
 
 
+def normalize_path(root, path):
+    """Accept absolute paths, root-prefixed paths, or relative paths; return the indexed relative path."""
+    if not path:
+        return path
+    p = path.replace("\\", "/").strip()
+    root_abs = os.path.abspath(root).replace("\\", "/")
+    if p.startswith(root_abs):
+        p = p[len(root_abs):]
+    p = p.lstrip("/")
+    base = os.path.basename(root_abs.rstrip("/"))
+    if p == base:
+        return ""
+    if p.startswith(base + "/"):
+        p = p[len(base) + 1:]
+    return p
+
+
 class Server:
     def __init__(self, root, db_path=None):
         self.root = os.path.abspath(root)
@@ -83,15 +100,17 @@ class Server:
             ranked = rank_files(self.con, args.get("task", ""), top_k=int(args.get("top_k", 8)))
             return json.dumps(ranked, indent=2)
         if name == "file_outline":
+            path = normalize_path(self.root, args.get("path", ""))
             rows = self.con.execute(
                 "SELECT kind, name, lineno FROM symbols WHERE file=? AND kind IN ('class','function') ORDER BY lineno",
-                (args.get("path", ""),),
+                (path,),
             ).fetchall()
             return json.dumps([dict(r) for r in rows], indent=2)
         if name == "call_graph":
             return json.dumps(call_graph(self.con, args.get("symbol", "")), indent=2)
         if name == "neighbors":
-            return json.dumps(neighbors(self.con, args.get("path", "")), indent=2)
+            path = normalize_path(self.root, args.get("path", ""))
+            return json.dumps(neighbors(self.con, path), indent=2)
         if name == "context_pack":
             return build_pack(self.con, self.root, args.get("task", ""), top_k=int(args.get("top_k", 8)))
         raise ValueError("unknown tool: %s" % name)

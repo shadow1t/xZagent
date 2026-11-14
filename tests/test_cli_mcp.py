@@ -68,6 +68,12 @@ class TestMcp(unittest.TestCase):
              "params": {"name": "find_files", "arguments": {"task": "login authentication bug", "top_k": 3}}},
             {"jsonrpc": "2.0", "id": 4, "method": "tools/call",
              "params": {"name": "call_graph", "arguments": {"symbol": "login"}}},
+            {"jsonrpc": "2.0", "id": 5, "method": "tools/call",
+             "params": {"name": "file_outline",
+                        "arguments": {"path": "app/auth.py"}}},
+            {"jsonrpc": "2.0", "id": 6, "method": "tools/call",
+             "params": {"name": "file_outline",
+                        "arguments": {"path": self.root.replace("\\", "/") + "/app/auth.py"}}},
         ]
         proc = subprocess.run(
             [sys.executable, "-m", "xzagent", "serve", self.root],
@@ -86,6 +92,11 @@ class TestMcp(unittest.TestCase):
         self.assertEqual(ranked[0][0], "app/auth.py")
         cg = json.loads(by_id[4]["result"]["content"][0]["text"])
         self.assertIn("app/main.py", cg["callers"])
+        outline_rel = json.loads(by_id[5]["result"]["content"][0]["text"])
+        outline_abs = json.loads(by_id[6]["result"]["content"][0]["text"])
+        names = {r["name"] for r in outline_rel}
+        self.assertIn("login", names)
+        self.assertEqual(outline_abs, outline_rel)
 
 
 if __name__ == "__main__":
