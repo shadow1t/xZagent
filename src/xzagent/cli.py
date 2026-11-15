@@ -71,7 +71,7 @@ def build_parser():
     sub = p.add_subparsers(dest="command", required=True)
 
     def add_root(sp):
-        sp.add_argument("root", help="Project root path")
+        sp.add_argument("root", nargs="?", default=".", help="Project root path (default: current directory)")
 
     sp = sub.add_parser("index", help="Build the index for a project")
     add_root(sp)
