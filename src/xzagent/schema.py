@@ -111,39 +111,73 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <title>DB schema map</title>
 <style>
-body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;margin:0}
-h1{font-size:18px;padding:12px 16px;margin:0;background:#1e293b}
-svg{display:block}
-.node circle{fill:#2563eb;stroke:#93c5fd;stroke-width:2;cursor:pointer}
-.node text{fill:#fff;font-size:12px;text-anchor:middle;pointer-events:none}
-.edge{stroke:#64748b;stroke-width:1.5}
-.elabel{fill:#94a3b8;font-size:10px;text-anchor:middle}
-#info{position:fixed;top:60px;right:12px;background:#1e293b;padding:10px 14px;border-radius:8px;max-width:320px;font-size:13px;display:none}
+body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;overflow:hidden}
+#bar{display:flex;gap:8px;align-items:center;padding:10px 14px;background:#1e293b;font-size:14px}
+#bar input{background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:5px 9px;width:260px}
+#bar span{color:#94a3b8}
+#wrap{position:relative;width:100vw;height:calc(100vh - 45px)}
+svg{display:block;width:100%%;height:100%%;cursor:grab}
+.node circle{fill:#2563eb;stroke:#93c5fd;stroke-width:1.5;cursor:pointer}
+.node text{fill:#fff;font-size:11px;text-anchor:middle;pointer-events:none}
+.node.dim{opacity:.15}
+.edge{stroke:#475569;stroke-width:1}
+#info{position:absolute;top:12px;right:12px;background:#1e293b;border:1px solid #334155;padding:10px 14px;border-radius:8px;max-width:340px;font-size:13px;display:none;pointer-events:none}
 </style></head><body>
-<h1>DB schema map</h1>
-<div id="info"></div>
-<svg id="g" width="100%%" height="92%%"></svg>
+<div id="bar"><b>DB schema map</b><input id="q" placeholder="filter tables..."><span id="cnt"></span><span>scroll=zoom, drag=pan, click node=details</span></div>
+<div id="wrap"><div id="info"></div><svg id="g"></svg></div>
 <script>
 const data = %s;
 const svg = document.getElementById('g');
-const W = svg.clientWidth || innerWidth, H = svg.clientHeight || innerHeight;
-const nodes = data.map((t,i)=>({...t, x: W/2 + Math.cos(2*Math.PI*i/data.length)*Math.min(W,H)*0.35, y: H/2 + Math.sin(2*Math.PI*i/data.length)*Math.min(W,H)*0.35}));
+const wrap = document.getElementById('wrap');
+let view = {x:0,y:0,k:1};
+const nodes = data.map((t,i)=>({...t, x:(Math.random()-.5)*800, y:(Math.random()-.5)*800, vx:0, vy:0}));
 const byName = {}; nodes.forEach(n=>byName[n.name]=n);
-const ns = 'http://www.w3.org/2000/svg';
+const links = [];
+data.forEach(t=>t.fks.forEach(fk=>{const to=byName[fk.ref_table]; if(to) links.push({s:t, t:to, fk});}));
+// simple force-directed layout
+for(let iter=0; iter<400; iter++){
+  for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
+    const a=nodes[i], b=nodes[j]; let dx=a.x-b.x, dy=a.y-b.y; let d=Math.hypot(dx,dy)||1;
+    const f=6000/(d*d); a.vx+=dx/d*f; a.vy+=dy/d*f; b.vx-=dx/d*f; b.vy-=dy/d*f;
+  }
+  links.forEach(l=>{let dx=l.t.x-l.s.x, dy=l.t.y-l.s.y; let d=Math.hypot(dx,dy)||1;
+    const f=(d-160)*0.02; l.s.vx+=dx/d*f; l.s.vy+=dy/d*f; l.t.vx-=dx/d*f; l.t.vy-=dy/d*f;});
+  nodes.forEach(n=>{n.vx-=n.x*0.01; n.vy-=n.y*0.01; n.x+=n.vx*0.5; n.y+=n.vy*0.5; n.vx*=0.8; n.vy*=0.8;});
+}
+const ns='http://www.w3.org/2000/svg';
 function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);return e}
-data.forEach(t=>t.fks.forEach(fk=>{
-  const to=byName[fk.ref_table]; if(!to) return;
-  svg.appendChild(el('line',{x1:t.x,y1:t.y,x2:to.x,y2:to.y,'class':'edge'}));
-}));
-nodes.forEach(n=>{
-  const g=el('g',{'class':'node'});
-  g.appendChild(el('circle',{cx:n.x,cy:n.y,r:26}));
-  const tx=el('text',{x:n.x,y:n.y+4}); tx.textContent=n.name; g.appendChild(tx);
-  g.onclick=()=>{const i=document.getElementById('info');i.style.display='block';
-    i.innerHTML='<b>'+n.name+'</b><br>source: '+n.source+'<br>columns: '+n.columns.join(', ')+
-      '<br>fks: '+(n.fks.map(f=>f.column+' → '+f.ref_table).join('; ')||'—');};
-  svg.appendChild(g);
-});
+let edgeEls=[], nodeEls=[];
+function render(){
+  svg.innerHTML=''; edgeEls=[]; nodeEls=[];
+  const W=wrap.clientWidth, H=wrap.clientHeight;
+  links.forEach(l=>{const e=el('line',{x1:l.s.x,y1:l.s.y,x2:l.t.x,y2:l.t.y,'class':'edge'});svg.appendChild(e);edgeEls.push({e,l});});
+  nodes.forEach(n=>{
+    const g=el('g',{'class':'node'});
+    g.appendChild(el('circle',{cx:n.x,cy:n.y,r:16}));
+    const tx=el('text',{x:n.x,y:n.y+4}); tx.textContent=n.name; g.appendChild(tx);
+    g.onclick=ev=>{ev.stopPropagation(); showInfo(n);};
+    svg.appendChild(g); nodeEls.push({g,n});
+  });
+  apply();
+}
+function apply(){
+  svg.setAttribute('viewBox', (view.x)+' '+(view.y)+' '+(wrap.clientWidth/view.k)+' '+(wrap.clientHeight/view.k));
+}
+function showInfo(n){const i=document.getElementById('info');i.style.display='block';
+  i.innerHTML='<b>'+n.name+'</b><br>source: '+n.source+'<br>columns: '+n.columns.join(', ')+
+    '<br>fks: '+(n.fks.map(f=>f.column+' → '+f.ref_table).join('; ')||'—');}
+render();
+document.getElementById('cnt').textContent = nodes.length+' tables, '+links.length+' relations';
+let drag=null;
+svg.onmousedown=e=>{drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};};
+window.onmousemove=e=>{if(drag){view.x=drag.vx-(e.clientX-drag.x)/view.k; view.y=drag.vy-(e.clientY-drag.y)/view.k; apply();}};
+window.onmouseup=()=>drag=null;
+svg.onwheel=e=>{e.preventDefault(); const f=e.deltaY<0?1.15:1/1.15; view.k=Math.min(8,Math.max(.1,view.k*f)); apply();};
+document.getElementById('q').oninput=e=>{
+  const q=e.target.value.toLowerCase();
+  nodeEls.forEach(({g,n})=>g.classList.toggle('dim', q && !n.name.toLowerCase().includes(q)));
+  edgeEls.forEach(({e,l})=>{const d=q && !(l.s.name.toLowerCase().includes(q)||l.t.name.toLowerCase().includes(q)); e.style.opacity=d?.1:1;});
+};
 </script></body></html>
 """
 
