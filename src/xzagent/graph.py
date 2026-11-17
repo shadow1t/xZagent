@@ -137,7 +137,7 @@ def call_graph(con, symbol):
     phrase = _symbol_phrase(symbol)
     if phrase:
         references = sorted({r["path"] for r in con.execute(
-            "SELECT f.path FROM files_fts JOIN files f ON f.rowid = files_fts.rowid WHERE files_fts MATCH ?",
+            "SELECT path FROM content_fts WHERE content_fts MATCH ?",
             (phrase,),
         ).fetchall()})[:50]
     return {"symbol": symbol, "definitions": defs, "callers": callers, "callees": callees, "references": references}
