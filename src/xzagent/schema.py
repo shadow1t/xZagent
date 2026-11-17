@@ -248,6 +248,9 @@ function select(name){
   cb.querySelectorAll('.jump').forEach(a=>a.onclick=()=>select(a.dataset.t));
   nodeEls.forEach(({g,n})=>g.classList.toggle('dim', n.name!==name && !links.some(l=>(l.s.name===name&&l.t.name===n.name)||(l.t.name===name&&l.s.name===n.name))));
   edgeEls.forEach(({e,l})=>{const rel=l.s.name===name||l.t.name===name; e.style.opacity=rel?1:.08;});
+  drawGraph();
+  nodeEls.forEach(({g,n})=>g.classList.toggle('dim', n.name!==name && !links.some(l=>(l.s.name===name&&l.t.name===n.name)||(l.t.name===name&&l.s.name===n.name))));
+  edgeEls.forEach(({e,l})=>{const rel=l.s.name===name||l.t.name===name; e.style.opacity=rel?1:.08;});
 }
 document.getElementById('q').oninput=e=>{buildSide(e.target.value.toLowerCase()); buildCards(e.target.value.toLowerCase());};
 document.getElementById('cnt').textContent=data.length+' tables · '+links.length+' relations';
@@ -276,6 +279,7 @@ function setMode(m){
 document.getElementById('vGraph').onclick=()=>setMode('graph');
 document.getElementById('vCards').onclick=()=>setMode('cards');
 buildSide(); buildCards(); drawGraph();
+window.onresize=()=>drawGraph();
 </script></body></html>
 """
 
