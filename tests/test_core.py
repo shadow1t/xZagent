@@ -162,6 +162,11 @@ class TestIndexRankGraph(unittest.TestCase):
         ranked = rank_files(self.con, "fetchUser", top_k=5)
         self.assertEqual(ranked[0][0], "web/api.js")
 
+    def test_stopwords_ignored(self):
+        from xzagent.rank import _tokens
+        self.assertNotIn("in", _tokens("fix the bug in login"))
+        self.assertIn("login", _tokens("fix the bug in login"))
+
     def test_word_boundary_no_false_positive(self):
         ranked = rank_files(self.con, "fix", top_k=10)
         paths = [p for p, _, _ in ranked]

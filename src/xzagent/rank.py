@@ -1,8 +1,20 @@
 import re
 
 
+_STOPWORDS = {
+    "a", "an", "the", "and", "or", "but", "if", "then", "else", "when", "in",
+    "on", "at", "to", "for", "of", "with", "by", "from", "as", "is", "are",
+    "was", "were", "be", "been", "it", "its", "this", "that", "these", "those",
+    "i", "you", "he", "she", "we", "they", "them", "his", "her", "their",
+    "our", "my", "your", "not", "no", "do", "does", "did", "can", "could",
+    "should", "would", "will", "shall", "may", "might", "must", "so", "than",
+    "too", "very", "just", "about", "into", "over", "after", "before", "how",
+    "what", "which", "who", "whom", "why", "all", "any", "some", "such",
+}
+
+
 def _tokens(query):
-    return [t.lower() for t in re.findall(r"\w+", query) if len(t) > 1]
+    return [t.lower() for t in re.findall(r"\w+", query) if len(t) > 1 and t.lower() not in _STOPWORDS]
 
 
 def _fts_query(query):
