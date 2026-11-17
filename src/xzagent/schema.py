@@ -183,28 +183,43 @@ for(let it=0;it<600;it++){
 const ns='http://www.w3.org/2000/svg';
 function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);return e}
 const svg=document.getElementById('graph');
-let view={x:-40,y:-40,k:1};
+let rot={rx:-0.4, ry:0.6}, zoom=1;
 let nodeEls=[];
 let edgeEls=[];
+function proj(n){
+  let x=n.sx*Math.cos(rot.ry)+n.sz*Math.sin(rot.ry);
+  let z=-n.sx*Math.sin(rot.ry)+n.sz*Math.cos(rot.ry);
+  let y=n.sy*Math.cos(rot.rx)-z*Math.sin(rot.rx);
+  z=n.sy*Math.sin(rot.rx)+z*Math.cos(rot.rx);
+  const R=170*zoom, f=2.2/(2.2-z);
+  return {x:x*R*f, y:y*R*f, z, f};
+}
 function drawGraph(){
   svg.innerHTML=''; nodeEls=[]; edgeEls=[];
-  links.forEach(l=>{const e=el('line',{x1:l.s.x,y1:l.s.y,x2:l.t.x,y2:l.t.y,'class':'edge'});svg.appendChild(e);edgeEls.push({e,l});});
-  nodes.forEach(n=>{const g=el('g',{'class':'node'});
-    g.appendChild(el('circle',{cx:n.x,cy:n.y,r:15}));
-    const tx=el('text',{x:n.x,y:n.y+4});tx.textContent=n.name;g.appendChild(tx);
+  const W=svg.clientWidth||800, H=svg.clientHeight||420;
+  svg.setAttribute('viewBox',(-W/2)+' '+(-H/2)+' '+W+' '+H);
+  const ps=nodes.map(n=>({n,p:proj(n)}));
+  links.forEach(l=>{
+    const a=ps.find(o=>o.n===l.s).p, b=ps.find(o=>o.n===l.t).p;
+    const e=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,'class':'edge'});
+    e.style.opacity=0.08+0.5*((a.z+b.z)/2+1)/2;
+    svg.appendChild(e); edgeEls.push({e,l});
+  });
+  ps.sort((o1,o2)=>o1.p.z-o2.p.z).forEach(({n,p})=>{
+    const g=el('g',{'class':'node'});
+    g.appendChild(el('circle',{cx:p.x,cy:p.y,r:15*Math.max(.6,p.f)}));
+    g.style.opacity=0.35+0.65*Math.max(0,(p.z+1)/2);
+    const tx=el('text',{x:p.x,y:p.y+4}); tx.textContent=n.name; tx.style.opacity=p.z>-0.2?1:0; g.appendChild(tx);
     g.onclick=()=>select(n.name);
-    g.onmouseenter=()=>g.classList.add('near'); g.onmouseleave=()=>g.classList.remove('near');
-    svg.appendChild(g); nodeEls.push({g,n});});
-  applyV();
+    g.onmouseenter=()=>{tx.style.opacity=1;}; g.onmouseleave=()=>{if(p.z<=-0.2)tx.style.opacity=0;};
+    svg.appendChild(g); nodeEls.push({g,n});
+  });
 }
-function applyV(){const w=svg.clientWidth||800,h=svg.clientHeight||420;
-  svg.setAttribute('viewBox',view.x+' '+view.y+' '+(w/view.k)+' '+(h/view.k));
-  nodeEls.forEach(({g})=>g.classList.toggle('near', view.k>=2.2));}
 let drag=null;
-svg.onmousedown=e=>{drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};};
-window.onmousemove=e=>{if(drag){view.x=drag.vx-(e.clientX-drag.x)/view.k;view.y=drag.vy-(e.clientY-drag.y)/view.k;applyV();}};
+svg.onmousedown=e=>{drag={x:e.clientX,y:e.clientY,rx:rot.rx,ry:rot.ry};};
+window.onmousemove=e=>{if(drag){rot.ry=drag.ry+(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; drawGraph();}};
 window.onmouseup=()=>drag=null;
-svg.onwheel=e=>{e.preventDefault();view.k=Math.min(8,Math.max(.1,view.k*(e.deltaY<0?1.15:1/1.15)));applyV();};
+svg.onwheel=e=>{e.preventDefault();zoom=Math.min(6,Math.max(.4,zoom*(e.deltaY<0?1.15:1/1.15)));drawGraph();};
 const side=document.getElementById('side');
 function buildSide(q=''){
   side.innerHTML='';
