@@ -172,9 +172,10 @@ function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAt
 const svg=document.getElementById('graph');
 let view={x:-40,y:-40,k:1};
 let nodeEls=[];
+let edgeEls=[];
 function drawGraph(){
-  svg.innerHTML=''; nodeEls=[];
-  links.forEach(l=>svg.appendChild(el('line',{x1:l.s.x,y1:l.s.y,x2:l.t.x,y2:l.t.y,'class':'edge'})));
+  svg.innerHTML=''; nodeEls=[]; edgeEls=[];
+  links.forEach(l=>{const e=el('line',{x1:l.s.x,y1:l.s.y,x2:l.t.x,y2:l.t.y,'class':'edge'});svg.appendChild(e);edgeEls.push({e,l});});
   nodes.forEach(n=>{const g=el('g',{'class':'node'});
     g.appendChild(el('circle',{cx:n.x,cy:n.y,r:15}));
     const tx=el('text',{x:n.x,y:n.y+4});tx.textContent=n.name;g.appendChild(tx);
@@ -216,6 +217,7 @@ function select(name){
   });
   cb.querySelectorAll('.jump').forEach(a=>a.onclick=()=>select(a.dataset.t));
   nodeEls.forEach(({g,n})=>g.classList.toggle('dim', n.name!==name && !links.some(l=>(l.s.name===name&&l.t.name===n.name)||(l.t.name===name&&l.s.name===n.name))));
+  edgeEls.forEach(({e,l})=>{const rel=l.s.name===name||l.t.name===name; e.style.opacity=rel?1:.08;});
 }
 document.getElementById('q').oninput=e=>buildSide(e.target.value.toLowerCase());
 document.getElementById('cnt').textContent=data.length+' tables · '+links.length+' relations';
