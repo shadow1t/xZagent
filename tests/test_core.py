@@ -102,6 +102,18 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("main", fn_names)
         self.assertNotIn("if", fn_names)
 
+    def test_db_schema_sql(self):
+        from xzagent.schema import parse_sql_schema
+        with open(os.path.join(self.root, "db/schema.sql"), encoding="utf-8") as fh:
+            tables = parse_sql_schema(fh.read())
+        self.assertIn("users", tables)
+        self.assertIn("company_id", tables["users"]["columns"])
+        self.assertEqual(tables["users"]["fks"], [{"column": "company_id", "ref_table": "companies"}])
+        rows = self.con.execute("SELECT name, columns, fks FROM db_tables").fetchall()
+        names = {r["name"] for r in rows}
+        self.assertIn("companies", names)
+        self.assertIn("users", names)
+
     def test_ensure_index_rebuilds_on_change(self):
         from xzagent.index import ensure_index
         db = build_index(self.root)

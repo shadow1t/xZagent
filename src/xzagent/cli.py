@@ -64,6 +64,26 @@ def cmd_graph(args):
     return 0
 
 
+def cmd_schema(args):
+    import json as _json
+
+    from .schema import format_schema
+    root, db, con = _open_db(args)
+    rows = [
+        {"name": r["name"], "source": r["source"],
+         "columns": _json.loads(r["columns"]), "fks": _json.loads(r["fks"])}
+        for r in con.execute("SELECT name, source, columns, fks FROM db_tables").fetchall()
+    ]
+    out = format_schema(rows)
+    if getattr(args, "output", None):
+        with open(args.output, "w", encoding="utf-8") as fh:
+            fh.write(out)
+        print("Wrote %s" % args.output)
+    else:
+        sys.stdout.write(out)
+    return 0
+
+
 def cmd_serve(args):
     from .mcp_server import serve
     serve(os.path.abspath(args.root), args.db)
@@ -106,6 +126,11 @@ def build_parser():
     sp.add_argument("symbol", nargs="?", default=None)
     sp.add_argument("--path", default=None, help="Show import/call neighbors of this file instead")
     sp.set_defaults(func=cmd_graph)
+
+    sp = sub.add_parser("schema", help="Show DB schema (tables, columns, foreign keys) from .sql files and SQLite DBs")
+    add_root(sp)
+    sp.add_argument("-o", "--output", help="Write the schema to a file instead of stdout")
+    sp.set_defaults(func=cmd_schema)
 
     sp = sub.add_parser("serve", help="Run the MCP stdio server for this project")
     add_root(sp)

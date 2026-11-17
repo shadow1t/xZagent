@@ -67,6 +67,11 @@ TOOLS = [
             "required": ["task"],
         },
     },
+    {
+        "name": "db_schema",
+        "description": "Database schema: tables, columns, and foreign-key relations (from .sql files and SQLite DBs in the project).",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
 ]
 
 
@@ -120,6 +125,13 @@ class Server:
             return json.dumps(neighbors(self.con, path), indent=2)
         if name == "context_pack":
             return build_pack(self.con, self.root, _arg(args, "task", "query"), top_k=int(args.get("top_k", 8)))
+        if name == "db_schema":
+            rows = [
+                {"name": r["name"], "source": r["source"],
+                 "columns": json.loads(r["columns"]), "fks": json.loads(r["fks"])}
+                for r in self.con.execute("SELECT name, source, columns, fks FROM db_tables").fetchall()
+            ]
+            return json.dumps(rows, indent=2)
         raise ValueError("unknown tool: %s" % name)
 
 

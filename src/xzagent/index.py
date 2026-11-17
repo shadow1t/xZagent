@@ -26,6 +26,7 @@ CREATE VIRTUAL TABLE content_fts USING fts5(path, symbols, content, tokenize='un
 CREATE INDEX idx_symbols_name ON symbols(name);
 CREATE INDEX idx_edges_from ON edges(from_file);
 CREATE INDEX idx_edges_label ON edges(label);
+CREATE TABLE IF NOT EXISTS db_tables(name TEXT, source TEXT, columns TEXT, fks TEXT, PRIMARY KEY(name, source));
 """
 
 CONTENT_INDEX_LIMIT = 20_000
@@ -52,6 +53,7 @@ def build_index(root, db_path=None):
     con.executescript(
         "DROP TABLE IF EXISTS meta; DROP TABLE IF EXISTS files; DROP TABLE IF EXISTS symbols;"
         "DROP TABLE IF EXISTS imports; DROP TABLE IF EXISTS edges; DROP TABLE IF EXISTS content_fts;"
+        "DROP TABLE IF EXISTS db_tables;"
     )
     con.executescript(SCHEMA)
     for f in files:
@@ -77,6 +79,13 @@ def build_index(root, db_path=None):
             (f.path, symbols_text, text[:CONTENT_INDEX_LIMIT]),
         )
     build_edges(con, root)
+    from .schema import collect_db_schema
+    import json as _json
+    for t in collect_db_schema(root, files):
+        con.execute(
+            "INSERT OR REPLACE INTO db_tables VALUES (?,?,?,?)",
+            (t["name"], t["source"], _json.dumps(t["columns"]), _json.dumps(t["fks"])),
+        )
     con.execute("INSERT OR REPLACE INTO meta VALUES ('root', ?)", (root,))
     con.execute("INSERT OR REPLACE INTO meta VALUES ('built_at', ?)", (str(time.time()),))
     con.execute("INSERT OR REPLACE INTO meta VALUES ('code_version', ?)", (_code_version(),))

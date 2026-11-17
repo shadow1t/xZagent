@@ -64,6 +64,17 @@ class MyApp {}
 """,
     "lib/services/utils.dart": """void helperFn() {}
 """,
+    "db/schema.sql": """CREATE TABLE companies (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    company_id INTEGER,
+    email TEXT,
+    FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+""",
     "README.md": "# Sample project\n\nA demo project for tests.\n",
     ".gitignore": "ignored_dir/\n*.log\n",
     "ignored_dir/secret.py": "def hidden():\n    pass\n",
