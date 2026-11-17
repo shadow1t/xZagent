@@ -117,6 +117,16 @@ body{font-family:system-ui,sans-serif;background:#0b1220;color:#e2e8f0;margin:0;
 #top b{color:#93c5fd}
 #top input{background:#0b1220;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:280px}
 #top span{color:#64748b;font-size:12px}
+#top button{background:#2563eb;color:#fff;border:0;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px}
+#top button.off{background:#1e293b;color:#94a3b8}
+#cards{display:none;flex-wrap:wrap;gap:12px;align-content:flex-start}
+.card{background:#0f172a;border:1px solid #1f2d4d;border-radius:8px;width:240px;cursor:pointer;overflow:hidden}
+.card:hover{border-color:#3b82f6}
+.card.sel{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb55}
+.card h3{margin:0;padding:8px 10px;background:#1e293b;font-size:13px;color:#93c5fd}
+.card .cols{padding:6px 10px;font-size:11px;color:#94a3b8;max-height:150px;overflow-y:auto}
+.card .cols div{padding:2px 0}
+.card .cols .fk{color:#fbbf24}
 #main{display:flex;height:calc(100vh - 46px)}
 #side{width:300px;min-width:300px;overflow-y:auto;background:#111c33;border-right:1px solid #1f2d4d;padding:8px}
 .titem{padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between}
@@ -140,11 +150,14 @@ td .fk{color:#fbbf24}
 td .pk{color:#34d399}
 a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 </style></head><body>
-<div id="top"><b>DB schema explorer</b><input id="q" placeholder="search tables..."><span id="cnt"></span><span>graph: scroll=zoom drag=pan · click node=select table</span></div>
+<div id="top"><b>DB schema explorer</b><input id="q" placeholder="search tables..."><span id="cnt"></span>
+<button id="vGraph">🕸 Network</button><button id="vCards" class="off">🗂 ER cards</button>
+<span>scroll=zoom drag=pan · click node/card=select table</span></div>
 <div id="main">
 <div id="side"></div>
 <div id="content">
-  <div id="empty" style="color:#64748b;padding:30px">Select a table from the left, or click a node in the graph.</div>
+  <div id="cards"></div>
+  <div id="empty" style="color:#64748b;padding:30px">Select a table from the left, or click a node/card.</div>
   <div id="detail" style="display:none">
     <h2 id="tname"></h2><div class="src" id="tsrc"></div>
     <svg id="graph"></svg>
@@ -208,6 +221,8 @@ function select(name){
   document.getElementById('tname').textContent=t.name;
   document.getElementById('tsrc').textContent='source: '+t.source+' · '+t.columns.length+' columns · '+t.fks.length+' foreign keys';
   document.querySelectorAll('.titem').forEach(e=>e.classList.toggle('sel',e.dataset.name===name));
+  document.querySelectorAll('.card').forEach(e=>e.classList.toggle('sel',e.dataset.name===name));
+  document.getElementById('detail').dataset.open='1';
   const cb=document.getElementById('cbody'); cb.innerHTML='';
   t.columns.forEach(c=>{
     const fk=t.fks.find(f=>f.column===c);
@@ -219,9 +234,33 @@ function select(name){
   nodeEls.forEach(({g,n})=>g.classList.toggle('dim', n.name!==name && !links.some(l=>(l.s.name===name&&l.t.name===n.name)||(l.t.name===name&&l.s.name===n.name))));
   edgeEls.forEach(({e,l})=>{const rel=l.s.name===name||l.t.name===name; e.style.opacity=rel?1:.08;});
 }
-document.getElementById('q').oninput=e=>buildSide(e.target.value.toLowerCase());
+document.getElementById('q').oninput=e=>{buildSide(e.target.value.toLowerCase()); buildCards(e.target.value.toLowerCase());};
 document.getElementById('cnt').textContent=data.length+' tables · '+links.length+' relations';
-buildSide(); drawGraph();
+function buildCards(q=''){
+  const c=document.getElementById('cards'); c.innerHTML='';
+  data.filter(t=>!q||t.name.toLowerCase().includes(q)).forEach(t=>{
+    const d=document.createElement('div'); d.className='card'; d.dataset.name=t.name;
+    let colsHtml=t.columns.slice(0,12).map(col=>{
+      const fk=t.fks.find(f=>f.column===col);
+      return '<div class="'+(fk?'fk':'')+'">'+col+(fk?' → '+fk.ref_table:'')+'</div>';
+    }).join('');
+    if(t.columns.length>12) colsHtml+='<div>… +'+(t.columns.length-12)+' more</div>';
+    d.innerHTML='<h3>'+t.name+'</h3><div class="cols">'+colsHtml+'</div>';
+    d.onclick=()=>select(t.name); c.appendChild(d);
+  });
+}
+let mode='graph';
+function setMode(m){
+  mode=m;
+  document.getElementById('vGraph').classList.toggle('off',m!=='graph');
+  document.getElementById('vCards').classList.toggle('off',m!=='cards');
+  document.getElementById('cards').style.display=m==='cards'?'flex':'none';
+  document.getElementById('detail').style.display=(m==='cards'&&!document.getElementById('detail').dataset.open)?'none':'block';
+  document.getElementById('empty').style.display=(m==='cards')?'none':'block';
+}
+document.getElementById('vGraph').onclick=()=>setMode('graph');
+document.getElementById('vCards').onclick=()=>setMode('cards');
+buildSide(); buildCards(); drawGraph();
 </script></body></html>
 """
 
