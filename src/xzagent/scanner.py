@@ -8,7 +8,13 @@ DEFAULT_IGNORE_DIRS = {
     ".git", ".hg", ".svn", "node_modules", "__pycache__", ".venv", "venv", "env",
     "dist", "build", "target", ".next", ".nuxt", "vendor", ".idea", ".vscode",
     "coverage", ".mypy_cache", ".pytest_cache", ".tox", ".cache", "out", ".output",
+    ".tmp", "tmp", ".npm-cache", ".yarn-cache", ".turbo", ".parcel-cache",
+    ".eggs", "storybook-static", "test-results",
 }
+
+
+def _ignored_name(name):
+    return name in DEFAULT_IGNORE_DIRS or name.endswith(".egg-info")
 
 
 @dataclass
@@ -33,12 +39,12 @@ def scan(root):
                 matcher.add_gitignore(dirpath, fh.read())
         dirnames[:] = [
             d for d in dirnames
-            if d not in DEFAULT_IGNORE_DIRS
+            if not _ignored_name(d)
             and not matcher.is_ignored(root, os.path.join(dirpath, d), True)
         ]
         for fn in filenames:
             full = os.path.join(dirpath, fn)
-            if fn in DEFAULT_IGNORE_DIRS or matcher.is_ignored(root, full, False):
+            if _ignored_name(fn) or matcher.is_ignored(root, full, False):
                 continue
             if os.path.basename(full) in SPECIAL_FILES:
                 ext = SPECIAL_FILES[os.path.basename(full)]
