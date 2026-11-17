@@ -160,7 +160,7 @@ a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
   <div id="empty" style="color:#64748b;padding:30px">Select a table from the left, or click a node/card.</div>
   <div id="detail" style="display:none">
     <h2 id="tname"></h2><div class="src" id="tsrc"></div>
-    <svg id="graph"></svg>
+    <svg id="graph" width="800" height="420"></svg>
     <h2 style="margin-top:18px">Columns</h2>
     <table class="cols"><thead><tr><th>column</th><th>relation</th></tr></thead><tbody id="cbody"></tbody></table>
   </div>
@@ -278,7 +278,8 @@ function setMode(m){
 }
 document.getElementById('vGraph').onclick=()=>setMode('graph');
 document.getElementById('vCards').onclick=()=>setMode('cards');
-buildSide(); buildCards(); drawGraph();
+buildSide(); buildCards();
+requestAnimationFrame(()=>drawGraph());
 window.onresize=()=>drawGraph();
 </script></body></html>
 """
