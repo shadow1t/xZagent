@@ -119,8 +119,7 @@ def neighbors(con, path):
 
 
 def _symbol_phrase(symbol):
-    words = re.findall(r"[A-Z]+(?![a-z])|[A-Z][a-z0-9]*|[a-z0-9]+", symbol)
-    return '"' + " ".join(words) + '"' if words else None
+    return '"' + symbol.replace('"', '""') + '"' if symbol else None
 
 
 def call_graph(con, symbol):
