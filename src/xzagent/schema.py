@@ -127,7 +127,8 @@ body{font-family:system-ui,sans-serif;background:#0b1220;color:#e2e8f0;margin:0;
 #content{flex:1;overflow:auto;padding:18px;position:relative}
 #graph{width:100%%;height:420px;background:#0f172a;border:1px solid #1f2d4d;border-radius:10px}
 .node circle{fill:#2563eb;stroke:#93c5fd;stroke-width:1.5;cursor:pointer}
-.node text{fill:#fff;font-size:11px;text-anchor:middle;pointer-events:none}
+.node text{fill:#fff;font-size:11px;text-anchor:middle;pointer-events:none;opacity:0;transition:opacity .15s}
+.node:hover text, .node.near text{opacity:1}
 .node.dim{opacity:.12}
 .edge{stroke:#475569;stroke-width:1}
 h2{font-size:18px;margin:14px 0 4px;color:#93c5fd}
@@ -158,13 +159,13 @@ const byName = {}; data.forEach(t=>byName[t.name]=t);
 const nodes = data.map(t=>({...t, x:(Math.random()-.5)*600, y:(Math.random()-.5)*400, vx:0, vy:0}));
 const nbyName = {}; nodes.forEach(n=>nbyName[n.name]=n);
 const links=[]; data.forEach(t=>t.fks.forEach(fk=>{const to=nbyName[fk.ref_table]; if(to) links.push({s:nbyName[t.name],t:to,fk});}));
-for(let it=0;it<350;it++){
+for(let it=0;it<600;it++){
   for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
-    const a=nodes[i],b=nodes[j];let dx=a.x-b.x,dy=a.y-b.y;let d=Math.hypot(dx,dy)||1;const f=5000/(d*d);
+    const a=nodes[i],b=nodes[j];let dx=a.x-b.x,dy=a.y-b.y;let d=Math.hypot(dx,dy)||1;const f=30000/(d*d);
     a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f;}
-  links.forEach(l=>{let dx=l.t.x-l.s.x,dy=l.t.y-l.s.y;let d=Math.hypot(dx,dy)||1;const f=(d-140)*.02;
+  links.forEach(l=>{let dx=l.t.x-l.s.x,dy=l.t.y-l.s.y;let d=Math.hypot(dx,dy)||1;const f=(d-220)*.03;
     l.s.vx+=dx/d*f;l.s.vy+=dy/d*f;l.t.vx-=dx/d*f;l.t.vy-=dy/d*f;});
-  nodes.forEach(n=>{n.vx-=n.x*.01;n.vy-=n.y*.01;n.x+=n.vx*.5;n.y+=n.vy*.5;n.vx*=.8;n.vy*=.8;});
+  nodes.forEach(n=>{n.vx-=n.x*.008;n.vy-=n.y*.008;n.x+=n.vx*.5;n.y+=n.vy*.5;n.vx*=.75;n.vy*=.75;});
 }
 const ns='http://www.w3.org/2000/svg';
 function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);return e}
@@ -177,11 +178,14 @@ function drawGraph(){
   nodes.forEach(n=>{const g=el('g',{'class':'node'});
     g.appendChild(el('circle',{cx:n.x,cy:n.y,r:15}));
     const tx=el('text',{x:n.x,y:n.y+4});tx.textContent=n.name;g.appendChild(tx);
-    g.onclick=()=>select(n.name); svg.appendChild(g); nodeEls.push({g,n});});
+    g.onclick=()=>select(n.name);
+    g.onmouseenter=()=>g.classList.add('near'); g.onmouseleave=()=>g.classList.remove('near');
+    svg.appendChild(g); nodeEls.push({g,n});});
   applyV();
 }
 function applyV(){const w=svg.clientWidth||800,h=svg.clientHeight||420;
-  svg.setAttribute('viewBox',view.x+' '+view.y+' '+(w/view.k)+' '+(h/view.k));}
+  svg.setAttribute('viewBox',view.x+' '+view.y+' '+(w/view.k)+' '+(h/view.k));
+  nodeEls.forEach(({g})=>g.classList.toggle('near', view.k>=2.2));}
 let drag=null;
 svg.onmousedown=e=>{drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};};
 window.onmousemove=e=>{if(drag){view.x=drag.vx-(e.clientX-drag.x)/view.k;view.y=drag.vy-(e.clientY-drag.y)/view.k;applyV();}};
