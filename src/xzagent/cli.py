@@ -25,7 +25,13 @@ def cmd_index(args):
 
 def cmd_map(args):
     root, db, con = _open_db(args)
-    sys.stdout.write(repo_map(con))
+    out = repo_map(con)
+    if getattr(args, "output", None):
+        with open(args.output, "w", encoding="utf-8") as fh:
+            fh.write(out)
+        print("Wrote %s" % args.output)
+    else:
+        sys.stdout.write(out)
     return 0
 
 
@@ -79,6 +85,7 @@ def build_parser():
 
     sp = sub.add_parser("map", help="Print the repo map")
     add_root(sp)
+    sp.add_argument("-o", "--output", help="Write the map to a file instead of stdout")
     sp.set_defaults(func=cmd_map)
 
     sp = sub.add_parser("ask", help="Rank files relevant to a task")
