@@ -145,6 +145,11 @@ class TestIndexRankGraph(unittest.TestCase):
         n = neighbors(self.con, "web/script.js")
         self.assertIn("web/api.js", {x["other"] for x in n})
 
+    def test_call_graph_references(self):
+        cg = call_graph(self.con, "login")
+        self.assertIn("app/auth.py", cg["references"])
+        self.assertIn("app/main.py", cg["references"])
+
     def test_call_graph(self):
         cg = call_graph(self.con, "login")
         self.assertIn("app/auth.py", [d["file"] for d in cg["definitions"]])

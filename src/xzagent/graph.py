@@ -1,4 +1,5 @@
 import os
+import re
 
 _PY_CANDIDATE_EXTS = (".py",)
 _JS_CANDIDATE_EXTS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
@@ -117,6 +118,11 @@ def neighbors(con, path):
     return [dict(r) for r in rows]
 
 
+def _symbol_phrase(symbol):
+    words = re.findall(r"[A-Z]+(?![a-z])|[A-Z][a-z0-9]*|[a-z0-9]+", symbol)
+    return '"' + " ".join(words) + '"' if words else None
+
+
 def call_graph(con, symbol):
     defs = [dict(r) for r in con.execute(
         "SELECT file, lineno FROM symbols WHERE name=? AND kind IN ('function','class') ORDER BY file", (symbol,)
@@ -127,4 +133,11 @@ def call_graph(con, symbol):
     callees = sorted({r["to_file"] for r in con.execute(
         "SELECT to_file FROM edges WHERE kind='call' AND label=?", (symbol,)
     ).fetchall()})
-    return {"symbol": symbol, "definitions": defs, "callers": callers, "callees": callees}
+    references = []
+    phrase = _symbol_phrase(symbol)
+    if phrase:
+        references = sorted({r["path"] for r in con.execute(
+            "SELECT f.path FROM files_fts JOIN files f ON f.rowid = files_fts.rowid WHERE files_fts MATCH ?",
+            (phrase,),
+        ).fetchall()})[:50]
+    return {"symbol": symbol, "definitions": defs, "callers": callers, "callees": callees, "references": references}
