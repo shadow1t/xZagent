@@ -153,6 +153,53 @@ def schema_html(rows):
     return HTML_TEMPLATE % json.dumps(rows)
 
 
+_PG_TABLES_SQL = """
+SELECT table_name, column_name, data_type FROM information_schema.columns
+WHERE table_schema = 'public' ORDER BY table_name, ordinal_position;
+"""
+_PG_FKS_SQL = """
+SELECT tc.table_name, kcu.column_name, ccu.table_name AS ref_table
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public';
+"""
+
+
+def rows_to_tables(col_rows, fk_rows):
+    tables = {}
+    for t, c, _dt in col_rows:
+        tables.setdefault(t, {"columns": [], "fks": []})["columns"].append(c)
+    for t, c, ref in fk_rows:
+        tables.setdefault(t, {"columns": [], "fks": []})["fks"].append({"column": c, "ref_table": ref})
+    return tables
+
+
+def fetch_postgres_schema(dsn):
+    """Fetch schema from a live PostgreSQL server. Tries psycopg, then psql CLI."""
+    try:
+        import psycopg  # type: ignore
+        with psycopg.connect(dsn) as con:
+            cols = con.execute(_PG_TABLES_SQL).fetchall()
+            fks = con.execute(_PG_FKS_SQL).fetchall()
+        return rows_to_tables(cols, fks)
+    except ImportError:
+        pass
+    import shutil
+    import subprocess
+    if shutil.which("psql"):
+        env_dsn = dsn
+        out_c = subprocess.run(["psql", env_dsn, "-At", "-F", "\t", "-c", _PG_TABLES_SQL],
+                               capture_output=True, text=True)
+        out_f = subprocess.run(["psql", env_dsn, "-At", "-F", "\t", "-c", _PG_FKS_SQL],
+                               capture_output=True, text=True)
+        if out_c.returncode == 0 and out_f.returncode == 0:
+            cols = [tuple(l.split("\t")) for l in out_c.stdout.strip().splitlines() if l]
+            fks = [tuple(l.split("\t")) for l in out_f.stdout.strip().splitlines() if l]
+            return rows_to_tables(cols, fks)
+    raise RuntimeError("Need psycopg (pip install psycopg) or psql on PATH, or use: pg_dump --schema-only")
+
+
 def collect_db_schema(root, scanned_files):
     """Return list of {name, source, columns, fks} from .sql files and SQLite DBs."""
     out = []

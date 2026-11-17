@@ -128,6 +128,14 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("Order", html)
         self.assertIn("<svg", html)
 
+    def test_postgres_rows_to_tables(self):
+        from xzagent.schema import rows_to_tables
+        cols = [("users", "id", "integer"), ("users", "company_id", "integer"), ("companies", "id", "integer")]
+        fks = [("users", "company_id", "companies")]
+        tables = rows_to_tables(cols, fks)
+        self.assertEqual(tables["users"]["fks"], [{"column": "company_id", "ref_table": "companies"}])
+        self.assertIn("company_id", tables["users"]["columns"])
+
     def test_ensure_index_rebuilds_on_change(self):
         from xzagent.index import ensure_index
         db = build_index(self.root)

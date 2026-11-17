@@ -67,7 +67,19 @@ def cmd_graph(args):
 def cmd_schema(args):
     import json as _json
 
-    from .schema import format_schema
+    from .schema import fetch_postgres_schema, format_schema
+    if getattr(args, "pg", None):
+        tables = fetch_postgres_schema(args.pg)
+        rows = [{"name": n, "source": "postgresql", "columns": t["columns"], "fks": t["fks"]}
+                for n, t in sorted(tables.items())]
+        if getattr(args, "html", None):
+            from .schema import schema_html
+            with open(args.html, "w", encoding="utf-8") as fh:
+                fh.write(schema_html(rows))
+            print("Wrote %s (open in browser)" % args.html)
+            return 0
+        sys.stdout.write(format_schema(rows))
+        return 0
     root, db, con = _open_db(args)
     rows = [
         {"name": r["name"], "source": r["source"],
@@ -137,6 +149,7 @@ def build_parser():
     add_root(sp)
     sp.add_argument("-o", "--output", help="Write the schema to a file instead of stdout")
     sp.add_argument("--html", help="Write an interactive HTML network map of tables/relations")
+    sp.add_argument("--pg", metavar="DSN", help="Fetch schema from a live PostgreSQL server, e.g. postgresql://user:pass@localhost:5432/dbname")
     sp.set_defaults(func=cmd_schema)
 
     sp = sub.add_parser("serve", help="Run the MCP stdio server for this project")
