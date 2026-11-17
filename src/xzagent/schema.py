@@ -169,17 +169,13 @@ a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 <script>
 const data = %s;
 const byName = {}; data.forEach(t=>byName[t.name]=t);
-const nodes = data.map(t=>({...t, x:(Math.random()-.5)*600, y:(Math.random()-.5)*400, vx:0, vy:0}));
+// fibonacci sphere positions (pseudo-3D planet)
+const nodes = data.map((t,i)=>{
+  const N=data.length, phi=Math.acos(1-2*(i+0.5)/N), th=Math.PI*(1+Math.sqrt(5))*i;
+  return {...t, sx:Math.sin(phi)*Math.cos(th), sy:Math.cos(phi), sz:Math.sin(phi)*Math.sin(th)};
+});
 const nbyName = {}; nodes.forEach(n=>nbyName[n.name]=n);
 const links=[]; data.forEach(t=>t.fks.forEach(fk=>{const to=nbyName[fk.ref_table]; if(to) links.push({s:nbyName[t.name],t:to,fk});}));
-for(let it=0;it<600;it++){
-  for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
-    const a=nodes[i],b=nodes[j];let dx=a.x-b.x,dy=a.y-b.y;let d=Math.hypot(dx,dy)||1;const f=30000/(d*d);
-    a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f;}
-  links.forEach(l=>{let dx=l.t.x-l.s.x,dy=l.t.y-l.s.y;let d=Math.hypot(dx,dy)||1;const f=(d-220)*.03;
-    l.s.vx+=dx/d*f;l.s.vy+=dy/d*f;l.t.vx-=dx/d*f;l.t.vy-=dy/d*f;});
-  nodes.forEach(n=>{n.vx-=n.x*.008;n.vy-=n.y*.008;n.x+=n.vx*.5;n.y+=n.vy*.5;n.vx*=.75;n.vy*=.75;});
-}
 const ns='http://www.w3.org/2000/svg';
 function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);return e}
 const svg=document.getElementById('graph');
