@@ -139,4 +139,5 @@ def call_graph(con, symbol):
             "SELECT path FROM content_fts WHERE content_fts MATCH ?",
             (phrase,),
         ).fetchall()})[:50]
+    callers = sorted(set(callers) | set(references))
     return {"symbol": symbol, "definitions": defs, "callers": callers, "callees": callees, "references": references}
