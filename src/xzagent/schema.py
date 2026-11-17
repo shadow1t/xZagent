@@ -80,6 +80,79 @@ def read_sqlite_schema(path):
     return tables
 
 
+_DJANGO_MODEL_RE = re.compile(
+    r"migrations\.CreateModel\(\s*name=[\"'](\w+)[\"']\s*,\s*fields=\[(.*?)\]\s*,?\s*\)",
+    re.IGNORECASE | re.DOTALL,
+)
+_FIELD_RE = re.compile(r"\(\s*[\"'](\w+)[\"']\s*,\s*models\.(\w+)\((.*?)\)", re.DOTALL)
+_FK_TARGET_RE = re.compile(r"[\"'](?:[\w.]+\.)?(\w+)[\"']")
+
+
+def parse_django_migrations(text):
+    """Extract tables from Django migration files (CreateModel + ForeignKey fields)."""
+    tables = {}
+    for m in _DJANGO_MODEL_RE.finditer(text):
+        name = m.group(1)
+        cols, fks = [], []
+        for f in _FIELD_RE.finditer(m.group(2)):
+            col, field_type, args = f.group(1), f.group(2), f.group(3)
+            if field_type in ("ForeignKey", "OneToOneField"):
+                tgt = _FK_TARGET_RE.search(args)
+                if tgt:
+                    fks.append({"column": col, "ref_table": tgt.group(1)})
+                    cols.append(col)
+                    continue
+            cols.append(col)
+        tables[name] = {"columns": cols, "fks": fks}
+    return tables
+
+
+HTML_TEMPLATE = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>DB schema map</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;margin:0}
+h1{font-size:18px;padding:12px 16px;margin:0;background:#1e293b}
+svg{display:block}
+.node circle{fill:#2563eb;stroke:#93c5fd;stroke-width:2;cursor:pointer}
+.node text{fill:#fff;font-size:12px;text-anchor:middle;pointer-events:none}
+.edge{stroke:#64748b;stroke-width:1.5}
+.elabel{fill:#94a3b8;font-size:10px;text-anchor:middle}
+#info{position:fixed;top:60px;right:12px;background:#1e293b;padding:10px 14px;border-radius:8px;max-width:320px;font-size:13px;display:none}
+</style></head><body>
+<h1>DB schema map</h1>
+<div id="info"></div>
+<svg id="g" width="100%%" height="92%%"></svg>
+<script>
+const data = %s;
+const svg = document.getElementById('g');
+const W = svg.clientWidth || innerWidth, H = svg.clientHeight || innerHeight;
+const nodes = data.map((t,i)=>({...t, x: W/2 + Math.cos(2*Math.PI*i/data.length)*Math.min(W,H)*0.35, y: H/2 + Math.sin(2*Math.PI*i/data.length)*Math.min(W,H)*0.35}));
+const byName = {}; nodes.forEach(n=>byName[n.name]=n);
+const ns = 'http://www.w3.org/2000/svg';
+function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);return e}
+data.forEach(t=>t.fks.forEach(fk=>{
+  const to=byName[fk.ref_table]; if(!to) return;
+  svg.appendChild(el('line',{x1:t.x,y1:t.y,x2:to.x,y2:to.y,'class':'edge'}));
+}));
+nodes.forEach(n=>{
+  const g=el('g',{'class':'node'});
+  g.appendChild(el('circle',{cx:n.x,cy:n.y,r:26}));
+  const tx=el('text',{x:n.x,y:n.y+4}); tx.textContent=n.name; g.appendChild(tx);
+  g.onclick=()=>{const i=document.getElementById('info');i.style.display='block';
+    i.innerHTML='<b>'+n.name+'</b><br>source: '+n.source+'<br>columns: '+n.columns.join(', ')+
+      '<br>fks: '+(n.fks.map(f=>f.column+' → '+f.ref_table).join('; ')||'—');};
+  svg.appendChild(g);
+});
+</script></body></html>
+"""
+
+
+def schema_html(rows):
+    import json
+    return HTML_TEMPLATE % json.dumps(rows)
+
+
 def collect_db_schema(root, scanned_files):
     """Return list of {name, source, columns, fks} from .sql files and SQLite DBs."""
     out = []
@@ -88,6 +161,14 @@ def collect_db_schema(root, scanned_files):
             try:
                 with open(f.abspath, encoding="utf-8", errors="ignore") as fh:
                     for tname, t in parse_sql_schema(fh.read()).items():
+                        out.append({"name": tname, "source": f.path,
+                                    "columns": t["columns"], "fks": t["fks"]})
+            except OSError:
+                pass
+        if f.ext == ".py" and "migrations" in f.path:
+            try:
+                with open(f.abspath, encoding="utf-8", errors="ignore") as fh:
+                    for tname, t in parse_django_migrations(fh.read()).items():
                         out.append({"name": tname, "source": f.path,
                                     "columns": t["columns"], "fks": t["fks"]})
             except OSError:

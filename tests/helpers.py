@@ -75,6 +75,20 @@ CREATE TABLE users (
     FOREIGN KEY (company_id) REFERENCES companies(id)
 );
 """,
+    "shop/migrations/0001_initial.py": """from django.db import migrations, models
+
+class Migration(migrations.Migration):
+    operations = [
+        migrations.CreateModel(
+            name='Order',
+            fields=[
+                ('id', models.AutoField(primary_key=True)),
+                ('customer_id', models.ForeignKey('Customer', on_delete=models.CASCADE)),
+                ('total', models.DecimalField()),
+            ],
+        ),
+    ]
+""",
     "README.md": "# Sample project\n\nA demo project for tests.\n",
     ".gitignore": "ignored_dir/\n*.log\n",
     "ignored_dir/secret.py": "def hidden():\n    pass\n",

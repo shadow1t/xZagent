@@ -114,6 +114,20 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("companies", names)
         self.assertIn("users", names)
 
+    def test_db_schema_django_migration_and_html(self):
+        from xzagent.schema import parse_django_migrations, schema_html
+        with open(os.path.join(self.root, "shop/migrations/0001_initial.py"), encoding="utf-8") as fh:
+            tables = parse_django_migrations(fh.read())
+        self.assertIn("Order", tables)
+        self.assertIn("total", tables["Order"]["columns"])
+        self.assertEqual(tables["Order"]["fks"], [{"column": "customer_id", "ref_table": "Customer"}])
+        rows = [dict(r) for r in self.con.execute("SELECT name, source, columns, fks FROM db_tables").fetchall()]
+        import json as _json
+        rows = [{"name": r["name"], "source": r["source"], "columns": _json.loads(r["columns"]), "fks": _json.loads(r["fks"])} for r in rows]
+        html = schema_html(rows)
+        self.assertIn("Order", html)
+        self.assertIn("<svg", html)
+
     def test_ensure_index_rebuilds_on_change(self):
         from xzagent.index import ensure_index
         db = build_index(self.root)

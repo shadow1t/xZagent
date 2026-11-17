@@ -74,6 +74,12 @@ def cmd_schema(args):
          "columns": _json.loads(r["columns"]), "fks": _json.loads(r["fks"])}
         for r in con.execute("SELECT name, source, columns, fks FROM db_tables").fetchall()
     ]
+    if getattr(args, "html", None):
+        from .schema import schema_html
+        with open(args.html, "w", encoding="utf-8") as fh:
+            fh.write(schema_html(rows))
+        print("Wrote %s (open in browser)" % args.html)
+        return 0
     out = format_schema(rows)
     if getattr(args, "output", None):
         with open(args.output, "w", encoding="utf-8") as fh:
@@ -130,6 +136,7 @@ def build_parser():
     sp = sub.add_parser("schema", help="Show DB schema (tables, columns, foreign keys) from .sql files and SQLite DBs")
     add_root(sp)
     sp.add_argument("-o", "--output", help="Write the schema to a file instead of stdout")
+    sp.add_argument("--html", help="Write an interactive HTML network map of tables/relations")
     sp.set_defaults(func=cmd_schema)
 
     sp = sub.add_parser("serve", help="Run the MCP stdio server for this project")
