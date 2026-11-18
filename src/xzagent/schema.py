@@ -218,8 +218,13 @@ function drawGraph(){
     e.style.opacity=0.08+0.5*((a.z+b.z)/2+1)/2;
     if(selectedName && (l.s.name===selectedName||l.t.name===selectedName)){
       e.classList.add('hot');
-      const lb=el('text',{x:(a.x+b.x)/2,y:(a.y+b.y)/2,'class':'elabel'});
-      lb.textContent=l.fk.column; svg.appendChild(lb);
+      if(zoom>=2.5){
+        const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+        const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
+        const off=(edgeEls.length%2? 10 : -10);
+        const lb=el('text',{x:mx-dy/len*off,y:my+dx/len*off,'class':'elabel'});
+        lb.textContent=l.fk.column; svg.appendChild(lb);
+      }
     }
     svg.appendChild(e); edgeEls.push({e,l});
   });
