@@ -142,6 +142,7 @@ body{font-family:system-ui,sans-serif;background:#0b1220;color:#e2e8f0;margin:0;
 .node.dim{opacity:.12}
 .edge{stroke:#475569;stroke-width:1}
 .edge.hot{stroke:#f97316;stroke-width:3.5}
+#graph.no-edges .edge:not(.hot){display:none}
 h2{font-size:18px;margin:14px 0 4px;color:#93c5fd}
 .src{color:#64748b;font-size:12px;margin-bottom:10px}
 table.cols{border-collapse:collapse;width:100%%;font-size:13px;background:#0f172a;border-radius:8px;overflow:hidden}
@@ -152,7 +153,7 @@ td .pk{color:#34d399}
 a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 </style></head><body>
 <div id="top"><b>DB schema explorer</b><input id="q" placeholder="search tables..."><span id="cnt"></span>
-<button id="vGraph">🕸 Network</button><button id="vCards" class="off">🗂 ER cards</button>
+<button id="vGraph">🕸 Network</button><button id="vCards" class="off">🗂 ER cards</button><button id="vEdges">🔗 edges: on</button>
 <span>scroll=zoom drag=pan · click node/card=select table</span></div>
 <div id="main">
 <div id="side"></div>
@@ -278,6 +279,11 @@ function setMode(m){
 }
 document.getElementById('vGraph').onclick=()=>{setMode('graph'); resetGraph();};
 document.getElementById('vCards').onclick=()=>setMode('cards');
+document.getElementById('vEdges').onclick=e=>{
+  const g=document.getElementById('graph');
+  g.classList.toggle('no-edges');
+  e.target.textContent = g.classList.contains('no-edges') ? '🔗 edges: off' : '🔗 edges: on';
+};
 let hiddenSet = new Set();
 let selectedName = null;
 function resetGraph(){ hiddenSet = new Set(); selectedName = null; drawGraph(); }
