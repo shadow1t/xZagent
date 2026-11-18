@@ -218,25 +218,19 @@ function drawGraph(){
     const a=ps.find(o=>o.n===l.s).p, b=ps.find(o=>o.n===l.t).p;
     const e=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,'class':'edge'});
     e.style.opacity=0.08+0.5*((a.z+b.z)/2+1)/2;
-    if(selectedName && (l.s.name===selectedName||l.t.name===selectedName)){
-      e.classList.add('hot');
-      if(zoom>=1.6){
-        const t=l.t.name===selectedName? l.s : l.t;
-        const tp=proj(t);
-        const lb=el('text',{x:tp.x+8,y:tp.y-8,'class':'elabel'});
-        lb.textContent=l.fk.column+' → '+(l.t.name===selectedName? l.t.name : l.s.name);
-        svg.appendChild(lb);
-      }
-    }
+    if(selectedName && (l.s.name===selectedName||l.t.name===selectedName)) e.classList.add('hot');
     svg.appendChild(e); edgeEls.push({e,l});
   });
   ps.sort((o1,o2)=>o1.p.z-o2.p.z).forEach(({n,p})=>{
     const g=el('g',{'class':'node'});
     g.appendChild(el('circle',{cx:p.x,cy:p.y,r:15*Math.max(.6,p.f)}));
     g.style.opacity=0.35+0.65*Math.max(0,(p.z+1)/2);
-    const tx=el('text',{x:p.x,y:p.y+4}); tx.textContent=n.name; tx.style.opacity=p.z>-0.2?1:0; g.appendChild(tx);
+    const tx=el('text',{x:p.x,y:p.y-22}); tx.textContent=n.name;
+    tx.style.opacity=p.z>0.35?1:0; tx.style.fontWeight = p.z>0.35?600:400;
+    tx.setAttribute('paint-order','stroke'); tx.setAttribute('stroke','#0b1220'); tx.setAttribute('stroke-width','4');
+    g.appendChild(tx);
     g.onclick=()=>select(n.name);
-    g.onmouseenter=()=>{tx.style.opacity=1;}; g.onmouseleave=()=>{if(p.z<=-0.2)tx.style.opacity=0;};
+    g.onmouseenter=()=>{tx.style.opacity=1;}; g.onmouseleave=()=>{if(p.z<=0.35)tx.style.opacity=0;};
     if(hiddenSet.has(n.name)) g.style.display='none';
     if(selectedName===n.name) g.classList.add('sel');
     svg.appendChild(g); nodeEls.push({g,n});
