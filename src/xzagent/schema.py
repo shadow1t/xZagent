@@ -132,7 +132,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gr
 .card .cols div{padding:2px 0}
 .card .cols .fk{color:#fbbf24}
 #main{display:flex;height:calc(100vh - 49px)}
-#side{width:300px;min-width:300px;overflow-y:auto;background:#101a30;border-right:1px solid #1f2d4d;padding:8px}
+#side{width:300px;min-width:300px;overflow-y:auto;background:#101a30;border-right:1px solid #1f2d4d;padding:8px;transition:margin .2s}
+#side.closed{margin-left:-300px}
+#sideToggle{background:#1e293b;color:#94a3b8}
+#ctl{position:absolute;top:60px;right:16px;display:flex;flex-direction:column;gap:6px;z-index:5}
+#ctl button{width:38px;height:38px;font-size:17px;padding:0;border-radius:10px;box-shadow:0 2px 8px #0007}
 .titem{padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;transition:background .1s}
 .titem:hover{background:#1e293b}
 .titem.sel{background:#2563eb;color:#fff}
@@ -162,7 +166,9 @@ a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 </style></head><body>
 <div id="top"><b>🧭 DB schema explorer</b><input id="q" placeholder="search tables...  ( / )"><span class="chip" id="cnt"></span>
 <button id="vGraph">🕸 Network</button><button id="vCards" class="off">🗂 ER cards</button><button id="vEdges">🔗 edges: on</button>
-<span class="hint">scroll=zoom · drag=rotate/pan · click=select · dbl-click=reset · esc=reset</span></div>
+<button id="sideToggle" title="toggle sidebar">☰</button>
+<span class="hint">scroll=zoom · drag=rotate · click=select · dbl-click=reset · esc=reset</span></div>
+<div id="ctl"><button id="zIn" title="zoom in">+</button><button id="zOut" title="zoom out">−</button><button id="zReset" title="reset view">⊙</button></div>
 <div id="toast"></div>
 <div id="main">
 <div id="side"></div>
@@ -233,7 +239,11 @@ let drag=null;
 svg.onmousedown=e=>{drag={x:e.clientX,y:e.clientY,rx:rot.rx,ry:rot.ry};};
 window.onmousemove=e=>{if(drag){rot.ry=drag.ry+(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; drawGraph();}};
 window.onmouseup=()=>drag=null;
-svg.onwheel=e=>{e.preventDefault();zoom=Math.min(6,Math.max(.4,zoom*(e.deltaY<0?1.15:1/1.15)));drawGraph();};
+svg.onwheel=e=>{e.preventDefault();zoom=Math.min(14,Math.max(.4,zoom*(e.deltaY<0?1.15:1/1.15)));drawGraph();};
+document.getElementById('zIn').onclick=()=>{zoom=Math.min(14,zoom*1.4);drawGraph();};
+document.getElementById('zOut').onclick=()=>{zoom=Math.max(.4,zoom/1.4);drawGraph();};
+document.getElementById('zReset').onclick=()=>{zoom=1;rot={rx:-0.4,ry:0.6};resetGraph();drawGraph();};
+document.getElementById('sideToggle').onclick=()=>document.getElementById('side').classList.toggle('closed');
 const side=document.getElementById('side');
 function buildSide(q=''){
   side.innerHTML='';
