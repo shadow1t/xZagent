@@ -208,6 +208,7 @@ function drawGraph(){
     const tx=el('text',{x:p.x,y:p.y+4}); tx.textContent=n.name; tx.style.opacity=p.z>-0.2?1:0; g.appendChild(tx);
     g.onclick=()=>select(n.name);
     g.onmouseenter=()=>{tx.style.opacity=1;}; g.onmouseleave=()=>{if(p.z<=-0.2)tx.style.opacity=0;};
+    if(hiddenSet.has(n.name)) g.style.display='none';
     svg.appendChild(g); nodeEls.push({g,n});
   });
 }
@@ -242,11 +243,11 @@ function select(name){
     cb.appendChild(tr);
   });
   cb.querySelectorAll('.jump').forEach(a=>a.onclick=()=>select(a.dataset.t));
-  drawGraph();
   const near = new Set([name]);
   links.forEach(l=>{ if(l.s.name===name) near.add(l.t.name); if(l.t.name===name) near.add(l.s.name); });
-  nodeEls.forEach(({g,n})=>{ g.style.display = near.has(n.name) ? '' : 'none'; });
-  edgeEls.forEach(({e,l})=>{ e.style.display = (l.s.name===name||l.t.name===name) ? '' : 'none'; });
+  hiddenSet = new Set(nodes.map(n=>n.name).filter(x=>!near.has(x)));
+  drawGraph();
+  edgeEls.forEach(({e,l})=>{ if(!(l.s.name===name||l.t.name===name)) e.style.display='none'; });
 }
 document.getElementById('q').oninput=e=>{buildSide(e.target.value.toLowerCase()); buildCards(e.target.value.toLowerCase());};
 document.getElementById('cnt').textContent=data.length+' tables · '+links.length+' relations';
@@ -274,7 +275,8 @@ function setMode(m){
 }
 document.getElementById('vGraph').onclick=()=>{setMode('graph'); resetGraph();};
 document.getElementById('vCards').onclick=()=>setMode('cards');
-function resetGraph(){ nodeEls.forEach(({g})=>g.style.display=''); edgeEls.forEach(({e})=>e.style.display=''); }
+let hiddenSet = new Set();
+function resetGraph(){ hiddenSet = new Set(); nodeEls.forEach(({g})=>g.style.display=''); edgeEls.forEach(({e})=>e.style.display=''); }
 svg.ondblclick=()=>resetGraph();
 buildSide(); buildCards();
 requestAnimationFrame(()=>drawGraph());
