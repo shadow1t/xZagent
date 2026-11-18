@@ -167,7 +167,7 @@ a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 <div id="top"><b>🧭 DB schema explorer</b><input id="q" placeholder="search tables...  ( / )"><span class="chip" id="cnt"></span>
 <button id="vGraph">🕸 Network</button><button id="vCards" class="off">🗂 ER cards</button><button id="vEdges">🔗 edges: on</button>
 <button id="sideToggle" title="toggle sidebar">☰</button>
-<span class="hint">scroll=zoom · drag=rotate · click=select · dbl-click=reset · esc=reset</span></div>
+<span class="hint">scroll=zoom · drag=rotate · shift+drag=pan · click=select · dbl-click=reset · esc=reset</span></div>
 <div id="ctl"><button id="zIn" title="zoom in">+</button><button id="zOut" title="zoom out">−</button><button id="zReset" title="reset view">⊙</button></div>
 <div id="toast"></div>
 <div id="main">
@@ -196,7 +196,7 @@ const links=[]; data.forEach(t=>t.fks.forEach(fk=>{const to=nbyName[fk.ref_table
 const ns='http://www.w3.org/2000/svg';
 function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);return e}
 const svg=document.getElementById('graph');
-let rot={rx:-0.4, ry:0.6}, zoom=1;
+let rot={rx:-0.4, ry:0.6}, zoom=1, pan={x:0,y:0};
 let nodeEls=[];
 let edgeEls=[];
 function proj(n){
@@ -204,13 +204,13 @@ function proj(n){
   let z=-n.sx*Math.sin(rot.ry)+n.sz*Math.cos(rot.ry);
   let y=n.sy*Math.cos(rot.rx)-z*Math.sin(rot.rx);
   z=n.sy*Math.sin(rot.rx)+z*Math.cos(rot.rx);
-  const R=170*zoom, f=2.2/(2.2-z);
+  const R=300, f=2.2/(2.2-z);
   return {x:x*R*f, y:y*R*f, z, f};
 }
 function drawGraph(){
   svg.innerHTML=''; nodeEls=[]; edgeEls=[];
   const W=svg.clientWidth||800, H=svg.clientHeight||420;
-  svg.setAttribute('viewBox',(-W/2)+' '+(-H/2)+' '+W+' '+H);
+  svg.setAttribute('viewBox',(-W/2/zoom+pan.x)+' '+(-H/2/zoom+pan.y)+' '+(W/zoom)+' '+(H/zoom));
   const ps=nodes.map(n=>({n,p:proj(n)}));
   links.forEach(l=>{
     const a=ps.find(o=>o.n===l.s).p, b=ps.find(o=>o.n===l.t).p;
@@ -236,13 +236,20 @@ function drawGraph(){
   });
 }
 let drag=null;
-svg.onmousedown=e=>{drag={x:e.clientX,y:e.clientY,rx:rot.rx,ry:rot.ry};};
-window.onmousemove=e=>{if(drag){rot.ry=drag.ry+(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; drawGraph();}};
+svg.onmousedown=e=>{
+  if(e.shiftKey||e.button===1){ drag={pan:true,x:e.clientX,y:e.clientY,px:pan.x,py:pan.y}; }
+  else { drag={pan:false,x:e.clientX,y:e.clientY,rx:rot.rx,ry:rot.ry}; }
+};
+window.onmousemove=e=>{if(drag){
+  if(drag.pan){ pan.x=drag.px+(e.clientX-drag.x)/zoom; pan.y=drag.py+(e.clientY-drag.y)/zoom; }
+  else { rot.ry=drag.ry+(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; }
+  drawGraph();
+}};
 window.onmouseup=()=>drag=null;
-svg.onwheel=e=>{e.preventDefault();zoom=Math.min(14,Math.max(.4,zoom*(e.deltaY<0?1.15:1/1.15)));drawGraph();};
-document.getElementById('zIn').onclick=()=>{zoom=Math.min(14,zoom*1.4);drawGraph();};
-document.getElementById('zOut').onclick=()=>{zoom=Math.max(.4,zoom/1.4);drawGraph();};
-document.getElementById('zReset').onclick=()=>{zoom=1;rot={rx:-0.4,ry:0.6};resetGraph();drawGraph();};
+svg.onwheel=e=>{e.preventDefault();zoom=Math.min(20,Math.max(.4,zoom*(e.deltaY<0?1.2:1/1.2)));drawGraph();};
+document.getElementById('zIn').onclick=()=>{zoom=Math.min(20,zoom*1.5);drawGraph();};
+document.getElementById('zOut').onclick=()=>{zoom=Math.max(.4,zoom/1.5);drawGraph();};
+document.getElementById('zReset').onclick=()=>{zoom=1;pan={x:0,y:0};rot={rx:-0.4,ry:0.6};resetGraph();drawGraph();};
 document.getElementById('sideToggle').onclick=()=>document.getElementById('side').classList.toggle('closed');
 const side=document.getElementById('side');
 function buildSide(q=''){
