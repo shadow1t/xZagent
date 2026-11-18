@@ -112,49 +112,58 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <title>DB schema explorer</title>
 <style>
 *{box-sizing:border-box}
-body{font-family:system-ui,sans-serif;background:#0b1220;color:#e2e8f0;margin:0;overflow:hidden}
-#top{display:flex;gap:10px;align-items:center;padding:10px 14px;background:#111c33;border-bottom:1px solid #1f2d4d;font-size:14px}
-#top b{color:#93c5fd}
-#top input{background:#0b1220;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:280px}
-#top span{color:#64748b;font-size:12px}
-#top button{background:#2563eb;color:#fff;border:0;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 600px at 70% -10%,#16233f 0%,#0b1220 55%);color:#e2e8f0;margin:0;overflow:hidden}
+#top{display:flex;gap:10px;align-items:center;padding:10px 16px;background:linear-gradient(180deg,#131f38,#111c33);border-bottom:1px solid #1f2d4d;font-size:14px;box-shadow:0 2px 12px #0008}
+#top b{color:#93c5fd;font-size:15px;letter-spacing:.3px}
+#top input{background:#0b1220;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:7px 12px;width:280px;outline:none;transition:border .15s}
+#top input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px #3b82f622}
+.chip{background:#1e293b;border:1px solid #1f2d4d;border-radius:999px;padding:4px 12px;font-size:12px;color:#94a3b8}
+.chip b{color:#e2e8f0}
+#top .hint{color:#64748b;font-size:12px;margin-left:auto}
+#top button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-size:13px;transition:all .15s}
+#top button:hover{background:#3b82f6}
 #top button.off{background:#1e293b;color:#94a3b8}
 #cards{display:none;flex-wrap:wrap;gap:12px;align-content:flex-start}
-.card{background:#0f172a;border:1px solid #1f2d4d;border-radius:8px;width:240px;cursor:pointer;overflow:hidden}
-.card:hover{border-color:#3b82f6}
-.card.sel{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb55}
-.card h3{margin:0;padding:8px 10px;background:#1e293b;font-size:13px;color:#93c5fd}
-.card .cols{padding:6px 10px;font-size:11px;color:#94a3b8;max-height:150px;overflow-y:auto}
+.card{background:#0f172a;border:1px solid #1f2d4d;border-radius:10px;width:250px;cursor:pointer;overflow:hidden;transition:all .15s}
+.card:hover{border-color:#3b82f6;transform:translateY(-2px)}
+.card.sel{border-color:#f97316;box-shadow:0 0 0 2px #f9731655}
+.card h3{margin:0;padding:9px 12px;background:#1e293b;font-size:13px;color:#93c5fd;font-weight:600}
+.card .cols{padding:6px 12px;font-size:11px;color:#94a3b8;max-height:150px;overflow-y:auto}
 .card .cols div{padding:2px 0}
 .card .cols .fk{color:#fbbf24}
-#main{display:flex;height:calc(100vh - 46px)}
-#side{width:300px;min-width:300px;overflow-y:auto;background:#111c33;border-right:1px solid #1f2d4d;padding:8px}
-.titem{padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between}
+#main{display:flex;height:calc(100vh - 49px)}
+#side{width:300px;min-width:300px;overflow-y:auto;background:#101a30;border-right:1px solid #1f2d4d;padding:8px}
+.titem{padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;transition:background .1s}
 .titem:hover{background:#1e293b}
 .titem.sel{background:#2563eb;color:#fff}
 .titem .nfk{color:#64748b;font-size:11px}
 .titem.sel .nfk{color:#bfdbfe}
 #content{flex:1;overflow:auto;padding:18px;position:relative}
-#graph{width:100%%;height:420px;background:#0f172a;border:1px solid #1f2d4d;border-radius:10px}
-.node circle{fill:#2563eb;stroke:#93c5fd;stroke-width:1.5;cursor:pointer}
-.node text{fill:#fff;font-size:11px;text-anchor:middle;pointer-events:none;opacity:0;transition:opacity .15s}
-.node:hover text, .node.near text{opacity:1}
+#graph{width:100%;height:440px;background:radial-gradient(600px 300px at 50% 40%,#12203a 0%,#0d1526 70%);border:1px solid #1f2d4d;border-radius:12px;box-shadow:inset 0 0 40px #0006}
+.node circle{fill:#2563eb;stroke:#93c5fd;stroke-width:1.5;cursor:pointer;transition:r .1s}
+.node.sel circle{fill:#f97316;stroke:#fdba74;stroke-width:2.5}
+.node text{fill:#fff;font-size:11px;text-anchor:middle;pointer-events:none;opacity:0;transition:opacity .15s;text-shadow:0 1px 3px #000}
+.node:hover text, .node.near text, .node.sel text{opacity:1}
 .node.dim{opacity:.12}
 .edge{stroke:#475569;stroke-width:1}
-.edge.hot{stroke:#f97316;stroke-width:3.5}
+.edge.hot{stroke:#f97316;stroke-width:3.5;filter:drop-shadow(0 0 4px #f97316aa)}
+.elabel{fill:#fdba74;font-size:10px;text-anchor:middle;pointer-events:none}
 #graph.no-edges .edge:not(.hot){display:none}
 h2{font-size:18px;margin:14px 0 4px;color:#93c5fd}
 .src{color:#64748b;font-size:12px;margin-bottom:10px}
-table.cols{border-collapse:collapse;width:100%%;font-size:13px;background:#0f172a;border-radius:8px;overflow:hidden}
-table.cols th{background:#1e293b;text-align:left;padding:8px 12px;color:#93c5fd}
-table.cols td{padding:8px 12px;border-top:1px solid #1f2d4d}
+table.cols{border-collapse:collapse;width:100%;font-size:13px;background:#0f172a;border-radius:10px;overflow:hidden;border:1px solid #1f2d4d}
+table.cols th{background:#1e293b;text-align:left;padding:9px 12px;color:#93c5fd}
+table.cols td{padding:9px 12px;border-top:1px solid #1f2d4d}
+table.cols tr:hover td{background:#131f38}
 td .fk{color:#fbbf24}
 td .pk{color:#34d399}
 a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
+#toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid #334155;padding:8px 16px;border-radius:999px;font-size:12px;color:#94a3b8;opacity:0;transition:opacity .2s;pointer-events:none}
 </style></head><body>
-<div id="top"><b>DB schema explorer</b><input id="q" placeholder="search tables..."><span id="cnt"></span>
+<div id="top"><b>🧭 DB schema explorer</b><input id="q" placeholder="search tables...  ( / )"><span class="chip" id="cnt"></span>
 <button id="vGraph">🕸 Network</button><button id="vCards" class="off">🗂 ER cards</button><button id="vEdges">🔗 edges: on</button>
-<span>scroll=zoom drag=pan · click node/card=select table</span></div>
+<span class="hint">scroll=zoom · drag=rotate/pan · click=select · dbl-click=reset · esc=reset</span></div>
+<div id="toast"></div>
 <div id="main">
 <div id="side"></div>
 <div id="content">
@@ -169,7 +178,7 @@ a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 </div>
 </div>
 <script>
-const data = %s;
+const data = __DATA__;
 const byName = {}; data.forEach(t=>byName[t.name]=t);
 // fibonacci sphere positions (pseudo-3D planet)
 const nodes = data.map((t,i)=>{
@@ -201,7 +210,11 @@ function drawGraph(){
     const a=ps.find(o=>o.n===l.s).p, b=ps.find(o=>o.n===l.t).p;
     const e=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,'class':'edge'});
     e.style.opacity=0.08+0.5*((a.z+b.z)/2+1)/2;
-    if(selectedName && (l.s.name===selectedName||l.t.name===selectedName)) e.classList.add('hot');
+    if(selectedName && (l.s.name===selectedName||l.t.name===selectedName)){
+      e.classList.add('hot');
+      const lb=el('text',{x:(a.x+b.x)/2,y:(a.y+b.y)/2,'class':'elabel'});
+      lb.textContent=l.fk.column; svg.appendChild(lb);
+    }
     svg.appendChild(e); edgeEls.push({e,l});
   });
   ps.sort((o1,o2)=>o1.p.z-o2.p.z).forEach(({n,p})=>{
@@ -212,6 +225,7 @@ function drawGraph(){
     g.onclick=()=>select(n.name);
     g.onmouseenter=()=>{tx.style.opacity=1;}; g.onmouseleave=()=>{if(p.z<=-0.2)tx.style.opacity=0;};
     if(hiddenSet.has(n.name)) g.style.display='none';
+    if(selectedName===n.name) g.classList.add('sel');
     svg.appendChild(g); nodeEls.push({g,n});
   });
 }
@@ -231,6 +245,7 @@ function buildSide(q=''){
 }
 function select(name){
   const t=byName[name]; if(!t) return;
+  toast('selected: '+name);
   document.getElementById('empty').style.display='none';
   document.getElementById('detail').style.display='block';
   document.getElementById('tname').textContent=t.name;
@@ -254,6 +269,11 @@ function select(name){
   edgeEls.forEach(({e,l})=>{ if(!(l.s.name===name||l.t.name===name)) e.style.display='none'; });
 }
 document.getElementById('q').oninput=e=>{buildSide(e.target.value.toLowerCase()); buildCards(e.target.value.toLowerCase());};
+window.onkeydown=e=>{
+  if(e.key==='/' && document.activeElement!==document.getElementById('q')){ e.preventDefault(); document.getElementById('q').focus(); }
+  if(e.key==='Escape'){ resetGraph(); document.getElementById('q').value=''; buildSide(); buildCards(); }
+};
+function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.style.opacity=1; setTimeout(()=>t.style.opacity=0,1600);} 
 document.getElementById('cnt').textContent=data.length+' tables · '+links.length+' relations';
 function buildCards(q=''){
   const c=document.getElementById('cards'); c.innerHTML='';
@@ -297,7 +317,7 @@ window.onresize=()=>drawGraph();
 
 def schema_html(rows):
     import json
-    return HTML_TEMPLATE % json.dumps(rows)
+    return HTML_TEMPLATE.replace("__DATA__", json.dumps(rows))
 
 
 _PG_TABLES_SQL = """
