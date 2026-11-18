@@ -137,6 +137,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gr
 #sideToggle{background:#1e293b;color:#94a3b8}
 #ctl{position:absolute;top:60px;right:16px;display:flex;flex-direction:column;gap:6px;z-index:5}
 #ctl button{width:38px;height:38px;font-size:17px;padding:0;border-radius:10px;box-shadow:0 2px 8px #0007}
+#graph.grab{cursor:grab}
+#graph.grabbing{cursor:grabbing}
 .titem{padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;transition:background .1s}
 .titem:hover{background:#1e293b}
 .titem.sel{background:#2563eb;color:#fff}
@@ -167,8 +169,8 @@ a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 <div id="top"><b>🧭 DB schema explorer</b><input id="q" placeholder="search tables...  ( / )"><span class="chip" id="cnt"></span>
 <button id="vGraph">🕸 Network</button><button id="vCards" class="off">🗂 ER cards</button><button id="vEdges">🔗 edges: on</button>
 <button id="sideToggle" title="toggle sidebar">☰</button>
-<span class="hint">scroll=zoom · drag=rotate · shift+drag=pan · click=select · dbl-click=reset · esc=reset</span></div>
-<div id="ctl"><button id="zIn" title="zoom in">+</button><button id="zOut" title="zoom out">−</button><button id="zReset" title="reset view">⊙</button></div>
+<span class="hint">scroll=zoom · drag=rotate · ✋/shift+drag=pan · click=select · dbl-click=reset · esc=reset</span></div>
+<div id="ctl"><button id="zIn" title="zoom in">+</button><button id="zOut" title="zoom out">−</button><button id="zReset" title="reset view">⊙</button><button id="hand" title="hand tool: drag to pan planet">✋</button></div>
 <div id="toast"></div>
 <div id="main">
 <div id="side"></div>
@@ -240,16 +242,25 @@ function drawGraph(){
     svg.appendChild(g); nodeEls.push({g,n});
   });
 }
-let drag=null;
+let drag=null, tool='rotate';
 svg.onmousedown=e=>{
-  if(e.shiftKey||e.button===1){ drag={pan:true,x:e.clientX,y:e.clientY,px:pan.x,py:pan.y}; }
-  else { drag={pan:false,x:e.clientX,y:e.clientY,rx:rot.rx,ry:rot.ry}; }
+  const doPan = tool==='pan' || e.shiftKey || e.button===1;
+  svg.classList.add('grabbing');
+  drag={pan:doPan,x:e.clientX,y:e.clientY,rx:rot.rx,ry:rot.ry,px:pan.x,py:pan.y};
 };
 window.onmousemove=e=>{if(drag){
   if(drag.pan){ pan.x=drag.px+(e.clientX-drag.x)/zoom; pan.y=drag.py+(e.clientY-drag.y)/zoom; }
   else { rot.ry=drag.ry+(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; }
   drawGraph();
 }};
+window.onmouseup=()=>{drag=null; svg.classList.remove('grabbing');};
+document.getElementById('hand').onclick=e=>{
+  tool = tool==='pan' ? 'rotate' : 'pan';
+  svg.classList.toggle('grab', tool==='pan');
+  e.target.classList.toggle('off', tool!=='pan');
+  e.target.textContent = tool==='pan' ? '✋' : '🔄';
+  e.target.title = tool==='pan' ? 'pan mode (click to rotate)' : 'hand tool: drag to pan planet';
+};
 window.onmouseup=()=>drag=null;
 svg.onwheel=e=>{e.preventDefault();zoom=Math.min(20,Math.max(.4,zoom*(e.deltaY<0?1.2:1/1.2)));drawGraph();};
 document.getElementById('zIn').onclick=()=>{zoom=Math.min(20,zoom*1.5);drawGraph();};
