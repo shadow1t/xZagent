@@ -141,6 +141,7 @@ body{font-family:system-ui,sans-serif;background:#0b1220;color:#e2e8f0;margin:0;
 .node:hover text, .node.near text{opacity:1}
 .node.dim{opacity:.12}
 .edge{stroke:#475569;stroke-width:1}
+.edge.hot{stroke:#f97316;stroke-width:3.5}
 h2{font-size:18px;margin:14px 0 4px;color:#93c5fd}
 .src{color:#64748b;font-size:12px;margin-bottom:10px}
 table.cols{border-collapse:collapse;width:100%%;font-size:13px;background:#0f172a;border-radius:8px;overflow:hidden}
@@ -247,7 +248,10 @@ function select(name){
   links.forEach(l=>{ if(l.s.name===name) near.add(l.t.name); if(l.t.name===name) near.add(l.s.name); });
   hiddenSet = new Set(nodes.map(n=>n.name).filter(x=>!near.has(x)));
   drawGraph();
-  edgeEls.forEach(({e,l})=>{ if(!(l.s.name===name||l.t.name===name)) e.style.display='none'; });
+  edgeEls.forEach(({e,l})=>{
+    if(l.s.name===name||l.t.name===name){ e.classList.add('hot'); }
+    else { e.style.display='none'; }
+  });
 }
 document.getElementById('q').oninput=e=>{buildSide(e.target.value.toLowerCase()); buildCards(e.target.value.toLowerCase());};
 document.getElementById('cnt').textContent=data.length+' tables · '+links.length+' relations';
@@ -276,7 +280,7 @@ function setMode(m){
 document.getElementById('vGraph').onclick=()=>{setMode('graph'); resetGraph();};
 document.getElementById('vCards').onclick=()=>setMode('cards');
 let hiddenSet = new Set();
-function resetGraph(){ hiddenSet = new Set(); nodeEls.forEach(({g})=>g.style.display=''); edgeEls.forEach(({e})=>e.style.display=''); }
+function resetGraph(){ hiddenSet = new Set(); nodeEls.forEach(({g})=>g.style.display=''); edgeEls.forEach(({e})=>{e.style.display='';e.classList.remove('hot');}); }
 svg.ondblclick=()=>resetGraph();
 buildSide(); buildCards();
 requestAnimationFrame(()=>drawGraph());
