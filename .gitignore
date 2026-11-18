@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.xzagent/
+*.egg-info/
+build/
+dist/
