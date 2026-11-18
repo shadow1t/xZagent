@@ -226,11 +226,11 @@ function drawGraph(){
     g.appendChild(el('circle',{cx:p.x,cy:p.y,r:15*Math.max(.6,p.f)}));
     g.style.opacity=0.35+0.65*Math.max(0,(p.z+1)/2);
     const tx=el('text',{x:p.x,y:p.y-22}); tx.textContent=n.name;
-    tx.style.opacity=p.z>0.35?1:0; tx.style.fontWeight = p.z>0.35?600:400;
+    tx.style.opacity=p.z>-0.2?1:0;
     tx.setAttribute('paint-order','stroke'); tx.setAttribute('stroke','#0b1220'); tx.setAttribute('stroke-width','4');
     g.appendChild(tx);
     g.onclick=()=>select(n.name);
-    g.onmouseenter=()=>{tx.style.opacity=1;}; g.onmouseleave=()=>{if(p.z<=0.35)tx.style.opacity=0;};
+    g.onmouseenter=()=>{tx.style.opacity=1;}; g.onmouseleave=()=>{if(p.z<=-0.2)tx.style.opacity=0;};
     if(hiddenSet.has(n.name)) g.style.display='none';
     if(selectedName===n.name) g.classList.add('sel');
     svg.appendChild(g); nodeEls.push({g,n});
