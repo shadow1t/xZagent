@@ -153,7 +153,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gr
 .node.dim{opacity:.12}
 .edge{stroke:#475569;stroke-width:1}
 .edge.hot{stroke:#f97316;stroke-width:3.5;filter:drop-shadow(0 0 4px #f97316aa)}
-.elabel{fill:#fdba74;font-size:10px;text-anchor:middle;pointer-events:none}
+.elabel{fill:#fdba74;font-size:10px;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:#0b1220;stroke-width:4px;stroke-linejoin:round;font-weight:600}
 #graph.no-edges .edge:not(.hot){display:none}
 h2{font-size:18px;margin:14px 0 4px;color:#93c5fd}
 .src{color:#64748b;font-size:12px;margin-bottom:10px}
@@ -220,12 +220,12 @@ function drawGraph(){
     e.style.opacity=0.08+0.5*((a.z+b.z)/2+1)/2;
     if(selectedName && (l.s.name===selectedName||l.t.name===selectedName)){
       e.classList.add('hot');
-      if(zoom>=2.5){
-        const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
-        const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
-        const off=(edgeEls.length%2? 10 : -10);
-        const lb=el('text',{x:mx-dy/len*off,y:my+dx/len*off,'class':'elabel'});
-        lb.textContent=l.fk.column; svg.appendChild(lb);
+      if(zoom>=1.6){
+        const t=l.t.name===selectedName? l.s : l.t;
+        const tp=proj(t);
+        const lb=el('text',{x:tp.x+8,y:tp.y-8,'class':'elabel'});
+        lb.textContent=l.fk.column+' → '+(l.t.name===selectedName? l.t.name : l.s.name);
+        svg.appendChild(lb);
       }
     }
     svg.appendChild(e); edgeEls.push({e,l});
