@@ -161,6 +161,11 @@ class TestIndexRankGraph(unittest.TestCase):
         # sidebar group folding: open-all/close-all + collapsed by default
         self.assertIn("foldBtn", html)
         self.assertIn("sideItem", html)
+        # 0.2.17: identity = (source, name), duplicate table names must not collide,
+        # and double-clicking a legend chip solos one database
+        self.assertIn("function keyOf(", html)
+        self.assertIn("byKey", html)
+        self.assertIn("soloSource", html)
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows

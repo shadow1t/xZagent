@@ -127,6 +127,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gr
 .lg{display:flex;align-items:center;gap:6px;background:#111c33;border:1px solid #1f2d4d;border-radius:999px;padding:4px 11px;cursor:pointer;transition:all .15s;color:#cbd5e1;user-select:none}
 .lg:hover{border-color:#3b82f6}
 .lg.off{opacity:.35;text-decoration:line-through}
+.lg.solo{border-color:#3b82f6;box-shadow:0 0 0 2px #3b82f655}
 .lg .dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor}
 .lg .n{color:#64748b}
 #legend .chip{cursor:default}
@@ -191,7 +192,7 @@ a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 <div id="top"><b>🧭 DB schema explorer</b><input id="q" placeholder="search tables or columns...  ( / )"><span class="chip" id="cnt"></span>
 <button id="vGraph">🕸 Network</button><button id="vCards" class="off">🗂 ER cards</button><button id="vEdges">🔗 edges: on</button><button id="vLabels" class="off">🏷 labels: front</button>
 <button id="sideToggle" title="toggle sidebar">☰</button>
-<span class="hint">scroll=zoom · drag=rotate · ✋/shift+drag=pan · click=select · dbl-click=reset · esc=reset · legend: click a database</span></div>
+<span class="hint">scroll=zoom · drag=rotate · ✋/shift+drag=pan · click=select · dbl-click=reset · esc=reset · legend: click=db on/off, 2xclick=ONLY that db</span></div>
 <div id="legend"></div>
 <div id="toast"></div>
 <div id="main">
@@ -199,7 +200,7 @@ a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 <div id="content">
   <div id="ctl"><button id="zIn" title="zoom in">+</button><button id="zOut" title="zoom out">−</button><button id="zReset" title="reset view">⊙</button><button id="hand" title="hand tool: drag to pan planet">✋</button></div>
   <div id="cards"></div>
-  <div id="empty" style="color:#64748b;padding:30px">Select a table from the left, or click a node/card. Colors = databases · click a legend chip to show or hide a whole database.</div>
+  <div id="empty" style="color:#64748b;padding:30px">Select a table to see only its relations · double-click a legend chip to focus ONE database · esc resets everything.</div>
   <div id="detail" style="display:none">
     <h2><span id="tname"></span><span id="tsrcc" class="srchip"></span></h2><div class="src" id="tsrc"></div>
     <svg id="graph" width="800" height="420"></svg>
@@ -210,8 +211,9 @@ a.jump{color:#60a5fa;cursor:pointer;text-decoration:underline}
 </div>
 <script>
 const data = __DATA__;
-let hiddenSet = new Set();
-let selectedName = null;
+let hiddenKeys = new Set();
+let selectedKey = null;
+let soloSource = null;
 let showAllLabels = false;
 let disabledSources = new Set();
 function esc(s){return String(s).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
@@ -220,14 +222,23 @@ function srcLabel(s){const i=Math.max(s.lastIndexOf('/'),s.lastIndexOf('\\\\'));
 const PALETTE=['#3b82f6','#22c55e','#a855f7','#f97316','#06b6d4','#eab308','#ec4899','#14b8a6'];
 const sources=[]; data.forEach(function(t){ if(sources.indexOf(t.source)<0) sources.push(t.source); });
 const sColor={}; sources.forEach(function(s,i){ sColor[s]=PALETTE[i%PALETTE.length]; });
-const byName = {}; data.forEach(function(t){byName[t.name]=t;});
+// table identity = (source, name): with many databases the SAME table
+// name exists in several of them, so name-only maps collided and a
+// selection used to light up every same-named table in every database.
+function keyOf(t){ return t.source+'|'+t.name; }
 // fibonacci sphere positions (pseudo-3D planet)
 const nodes = data.map(function(t,i){
   const N=data.length, phi=Math.acos(1-2*(i+0.5)/N), th=Math.PI*(1+Math.sqrt(5))*i;
-  return Object.assign({},t,{sx:Math.sin(phi)*Math.cos(th),sy:Math.cos(phi),sz:Math.sin(phi)*Math.sin(th)});
+  return Object.assign({},t,{key:keyOf(t),sx:Math.sin(phi)*Math.cos(th),sy:Math.cos(phi),sz:Math.sin(phi)*Math.sin(th)});
 });
-const nbyName = {}; nodes.forEach(function(n){nbyName[n.name]=n;});
-const links=[]; data.forEach(function(t){t.fks.forEach(function(fk){const to=nbyName[fk.ref_table]; if(to) links.push({s:nbyName[t.name],t:t===to?nbyName[t.name]:to,fk:fk,cross:t.source!==to.source});});});
+const byKey={}; nodes.forEach(function(n){byKey[n.key]=n;});
+const byNameFirst={}; nodes.forEach(function(n){ if(!(n.name in byNameFirst)) byNameFirst[n.name]=n; });
+const links=[];
+nodes.forEach(function(n){ n.fks.forEach(function(fk){
+  let to=byKey[n.source+'|'+fk.ref_table];      // same database first
+  if(!to) to=byNameFirst[fk.ref_table];         // then any (cross-db)
+  if(to) links.push({s:n,t:to,fk:fk,cross:n.source!==to.source});
+});});
 const hasCross = links.some(function(l){return l.cross;});
 const ns='http://www.w3.org/2000/svg';
 function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);return e}
@@ -254,7 +265,7 @@ function drawGraph(){
     const a=pName[l.s.name], b=pName[l.t.name];
     const e=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,'class':(l.cross?'edge cross':'edge')});
     e.style.opacity=0.08+0.5*((a.z+b.z)/2+1)/2;
-    if(selectedName && (l.s.name===selectedName||l.t.name===selectedName)) e.classList.add('hot');
+    if(selectedKey && (l.s.key===selectedKey||l.t.key===selectedKey)) e.classList.add('hot');
     svg.appendChild(e); edgeEls.push({e:e,l:l});
   });
   ps.sort(function(o1,o2){return o1.p.z-o2.p.z;}).forEach(function(op){
@@ -268,10 +279,10 @@ function drawGraph(){
     tx.style.opacity=(showAllLabels||p.z>-0.2)?1:0;
     tx.setAttribute('paint-order','stroke'); tx.setAttribute('stroke','#0b1220'); tx.setAttribute('stroke-width','4');
     g.appendChild(tx);
-    g.onclick=function(){select(n.name);};
+    g.onclick=function(){select(n.key);};
     g.onmouseenter=function(){tx.style.opacity=1;}; g.onmouseleave=function(){if(!showAllLabels&&p.z<=-0.2)tx.style.opacity=0;};
-    if(hiddenSet.has(n.name)) g.style.display='none';
-    if(selectedName===n.name) g.classList.add('sel');
+    if(hiddenKeys.has(n.key)) g.style.display='none';
+    if(selectedKey===n.key) g.classList.add('sel');
     svg.appendChild(g); nodeEls.push({g:g,n:n});
   });
 }
@@ -337,18 +348,19 @@ function buildSide(q){
     sum.title='source: '+s;
     det.appendChild(sum);
     ts.forEach(function(t){
-      const d=document.createElement('div'); d.className='titem'; d.dataset.name=t.name;
+      const k=keyOf(t);
+      const d=document.createElement('div'); d.className='titem'; d.dataset.key=k;
       d.innerHTML='<span>'+esc(t.name)+'</span><span class="nfk">'+t.fks.length+' fk</span>';
-      d.onclick=function(){select(t.name);}; det.appendChild(d);
-      sideItem[t.name]={el:d,det:det};
+      d.onclick=function(){select(k);}; det.appendChild(d);
+      sideItem[k]={el:d,det:det};
     });
     dets.push(det);
     side.appendChild(det);
   });
 }
-function select(name){
-  const t=byName[name]; if(!t) return;
-  toast('selected: '+name);
+function select(key){
+  const t=byKey[key]; if(!t) return;
+  toast('selected: '+t.name);
   document.getElementById('empty').style.display='none';
   document.getElementById('detail').style.display='block';
   document.getElementById('tname').textContent=t.name;
@@ -356,26 +368,33 @@ function select(name){
   chip.textContent=t.source;
   chip.style.borderColor=sColor[t.source]; chip.style.color=sColor[t.source];
   document.getElementById('tsrc').textContent='source: '+t.source+' · '+t.columns.length+' columns · '+t.fks.length+' foreign keys';
-  document.querySelectorAll('.titem').forEach(function(e){e.classList.toggle('sel',e.dataset.name===name);});
-  document.querySelectorAll('.card').forEach(function(e){e.classList.toggle('sel',e.dataset.name===name);});
+  document.querySelectorAll('.titem').forEach(function(e){e.classList.toggle('sel',e.dataset.key===key);});
+  document.querySelectorAll('.card').forEach(function(e){e.classList.toggle('sel',e.dataset.key===key);});
   // the selected table's sidebar group opens itself, then scrolls to the row
-  const sit=sideItem[name];
+  const sit=sideItem[key];
   if(sit){ sit.det.open=true; if(sit.el.scrollIntoView) sit.el.scrollIntoView({block:'nearest'}); }
   document.getElementById('detail').dataset.open='1';
   const cb=document.getElementById('cbody'); cb.innerHTML='';
   t.columns.forEach(function(c){
     const fk=t.fks.find(function(f){return f.column===c;});
     const tr=document.createElement('tr');
-    tr.innerHTML='<td><span class="'+(fk?'fk':'pk')+'">'+esc(c)+'</span></td><td>'+(fk?'→ <a class="jump" data-t="'+esc(fk.ref_table)+'">'+esc(fk.ref_table)+'</a>':'')+'</td>';
+    let rel='';
+    if(fk){
+      const tgt=byKey[t.source+'|'+fk.ref_table]||byNameFirst[fk.ref_table];
+      if(tgt) rel='→ <a class="jump" data-k="'+esc(tgt.key)+'">'+esc(fk.ref_table)+'</a>';
+      else rel='→ '+esc(fk.ref_table);
+    }
+    tr.innerHTML='<td><span class="'+(fk?'fk':'pk')+'">'+esc(c)+'</span></td><td>'+rel+'</td>';
     cb.appendChild(tr);
   });
-  cb.querySelectorAll('.jump').forEach(function(a){a.onclick=function(){select(a.dataset.t);};});
-  selectedName = name;
-  const near = new Set([name]);
-  links.forEach(function(l){ if(l.s.name===name) near.add(l.t.name); if(l.t.name===name) near.add(l.s.name); });
-  hiddenSet = new Set(nodes.map(function(n){return n.name;}).filter(function(x){return !near.has(x);}));
+  cb.querySelectorAll('.jump').forEach(function(a){a.onclick=function(){select(a.dataset.k);};});
+  selectedKey = key;
+  // isolate: only THIS table and its direct relations stay on the planet
+  const near = new Set([key]);
+  links.forEach(function(l){ if(l.s.key===key) near.add(l.t.key); if(l.t.key===key) near.add(l.s.key); });
+  hiddenKeys = new Set(nodes.map(function(n){return n.key;}).filter(function(x){return !near.has(x);}));
   drawGraph();
-  edgeEls.forEach(function(o){ if(!(o.l.s.name===name||o.l.t.name===name)) o.e.style.display='none'; });
+  edgeEls.forEach(function(o){ if(!(o.l.s.key===key||o.l.t.key===key)) o.e.style.display='none'; });
 }
 document.getElementById('q').oninput=function(e){buildSide(e.target.value.toLowerCase()); buildCards(e.target.value.toLowerCase());};
 window.onkeydown=function(e){
@@ -390,12 +409,24 @@ function buildLegend(){
     const n=data.filter(function(t){return t.source===s;}).length;
     const d=document.createElement('div'); d.className='lg'; d.dataset.s=s;
     d.innerHTML='<span class="dot" style="background:'+sColor[s]+';color:'+sColor[s]+'"></span>'+esc(srcLabel(s))+' · <span class="n">'+n+' tables</span>';
-    d.title='source: '+s+' · click: show or hide this database';
+    d.title='source: '+s+' · click: show/hide · double-click: ONLY this database';
+    if(soloSource===s) d.classList.add('solo');
     d.onclick=function(){
+      if(soloSource && soloSource!==s){ // a solo is active: clicking turns it off
+        soloSource=null; disabledSources=new Set();
+        buildLegend(); drawGraph(); buildSide(document.getElementById('q').value.toLowerCase()); buildCards(document.getElementById('q').value.toLowerCase());
+        return;
+      }
       if(disabledSources.has(s)) disabledSources.delete(s); else disabledSources.add(s);
       d.classList.toggle('off',disabledSources.has(s));
-      toast((disabledSources.has(s)?'hid':'showing')+' database: '+s);
+      toast((disabledSources.has(s)?'hid':'showing')+' database: '+srcLabel(s));
       drawGraph(); buildSide(document.getElementById('q').value.toLowerCase()); buildCards(document.getElementById('q').value.toLowerCase());
+    };
+    d.ondblclick=function(e){
+      e.preventDefault();
+      if(soloSource===s){ soloSource=null; disabledSources=new Set(); toast('showing all databases'); }
+      else { soloSource=s; disabledSources=new Set(sources.filter(function(x){return x!==s;})); toast('SOLO database: '+srcLabel(s)); }
+      buildLegend(); drawGraph(); buildSide(document.getElementById('q').value.toLowerCase()); buildCards(document.getElementById('q').value.toLowerCase());
     };
     lg.appendChild(d);
   });
@@ -416,7 +447,7 @@ function buildCards(q){
   q=q||'';
   const c=document.getElementById('cards'); c.innerHTML='';
   data.filter(function(t){return visible(t) && match(t,q);}).forEach(function(t){
-    const d=document.createElement('div'); d.className='card'; d.dataset.name=t.name;
+    const d=document.createElement('div'); d.className='card'; d.dataset.key=keyOf(t);
     d.style.setProperty('--sc',sColor[t.source]||'#2563eb');
     let colsHtml=t.columns.slice(0,12).map(function(col){
       const fk=t.fks.find(function(f){return f.column===col;});
@@ -424,7 +455,7 @@ function buildCards(q){
     }).join('');
     if(t.columns.length>12) colsHtml+='<div>… +'+(t.columns.length-12)+' more</div>';
     d.innerHTML='<h3>'+esc(t.name)+'</h3><div class="cardsrc" title="source: '+esc(t.source)+'"><span class="dot" style="background:'+sColor[t.source]+'"></span>'+esc(srcLabel(t.source))+'</div><div class="cols">'+colsHtml+'</div>';
-    d.onclick=function(){select(t.name);}; c.appendChild(d);
+    d.onclick=function(){select(keyOf(t));}; c.appendChild(d);
   });
 }
 let mode='graph';
@@ -450,7 +481,7 @@ document.getElementById('vLabels').onclick=function(e){
   drawGraph();
 };
 function resetGraph(){
-  hiddenSet = new Set(); selectedName = null; disabledSources = new Set();
+  hiddenKeys = new Set(); selectedKey = null; disabledSources = new Set(); soloSource = null;
   buildLegend(); buildSide(document.getElementById('q').value.toLowerCase()); buildCards(document.getElementById('q').value.toLowerCase());
   drawGraph();
   document.getElementById('detail').style.display = mode==='cards' && document.getElementById('detail').dataset.open ? 'block' : 'none';
