@@ -295,8 +295,10 @@ svg.onmousedown=function(e){
   drag={pan:doPan,x:e.clientX,y:e.clientY,rx:rot.rx,ry:rot.ry,px:pan.x,py:pan.y};
 };
 window.onmousemove=function(e){if(drag){
-  if(drag.pan){ pan.x=drag.px+(e.clientX-drag.x)/zoom; pan.y=drag.py+(e.clientY-drag.y)/zoom; }
-  else { rot.ry=drag.ry+(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; }
+  // direct manipulation: the view follows the cursor (dragging down
+  // moves the content down, not the camera)
+  if(drag.pan){ pan.x=drag.px-(e.clientX-drag.x)/zoom; pan.y=drag.py-(e.clientY-drag.y)/zoom; }
+  else { rot.ry=drag.ry-(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; }
   scheduleDraw();
 }};
 window.onmouseup=function(){drag=null; svg.classList.remove('grabbing');};
