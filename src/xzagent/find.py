@@ -183,7 +183,8 @@ NOISE_DIR_HINTS = set(DEFAULT_IGNORE_DIRS)
 
 def find_on_disk(root, pattern=None, lang=None, ext=None, only_exts=None,
                  exclude_exts=None, exclude_dirs=None, only_dirs=None,
-                 no_tests=False, extra_ignores=None, no_default_skips=False):
+                 no_tests=False, extra_ignores=None, no_default_skips=False,
+                 progress=None):
     """Direct-disk glob fallback for ctxp find.
 
     find is an explicit targeting command: when the user asks for files BY
@@ -213,6 +214,7 @@ def find_on_disk(root, pattern=None, lang=None, ext=None, only_exts=None,
     matcher = GitignoreMatcher()
     extra_ignores = list(extra_ignores or [])
     results = []
+    scanned = 0
     for dirpath, dirnames, filenames in os.walk(root):
         gi = os.path.join(dirpath, ".gitignore")
         if os.path.isfile(gi):
@@ -237,6 +239,12 @@ def find_on_disk(root, pattern=None, lang=None, ext=None, only_exts=None,
         dirnames[:] = keep
 
         for fn in filenames:
+            scanned += 1
+            if progress is not None and scanned % 25 == 0:
+                note = "scanning disk · %d files" % scanned
+                if results:
+                    note += " · %d matches" % len(results)
+                progress(scanned, 0, note)
             full = os.path.join(dirpath, fn)
             if matcher.is_ignored(root, full, False) \
                     and not matcher.is_negation_override(root, full, False):
@@ -274,4 +282,8 @@ def find_on_disk(root, pattern=None, lang=None, ext=None, only_exts=None,
                 "on_disk": True,
             })
     results.sort(key=lambda r: r["path"])
+    if progress is not None:
+        progress(scanned, 0,
+                 "scanning disk · %d files · %d matches"
+                 % (scanned, len(results)))
     return results

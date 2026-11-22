@@ -113,6 +113,8 @@ ctxp find . "tmp_*" --skip-dirs logs  # disk matches honor every filter too
 
 `.gitignore`, `.xzagentignore`, `--skip`, and all the filters above still
 apply. Only `--symbol` searches stay index-only (symbols need the index).
+The disk scan shows a live progress line (`⠙ scanning disk · 1200 files ·
+3 matches ...`) so big trees never look stuck; piped output stays clean.
 
 ## Restricting search to given directories: `--only-dirs`
 

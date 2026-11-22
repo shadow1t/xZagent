@@ -202,17 +202,25 @@ def cmd_find(args):
             **common,
         )
         if args.pattern and not getattr(args, "symbol", None):
-            disk_rows = find_on_disk(
-                root,
-                pattern=args.pattern,
-                lang=getattr(args, "lang", None),
-                ext=getattr(args, "ext", None),
-                no_tests=getattr(args, "no_tests", False),
-                extra_ignores=_split_skips(getattr(args, "skip", None)),
-                no_default_skips=(True if getattr(args, "index_all", None)
-                                  else (False if getattr(args, "default_skips", None) else None)),
-                **common,
-            )
+            # the disk pass can walk a whole big tree: keep the console
+            # alive with a live counter, exactly like the index build does
+            prog = Progress()
+            prog.start()
+            try:
+                disk_rows = find_on_disk(
+                    root,
+                    pattern=args.pattern,
+                    lang=getattr(args, "lang", None),
+                    ext=getattr(args, "ext", None),
+                    no_tests=getattr(args, "no_tests", False),
+                    extra_ignores=_split_skips(getattr(args, "skip", None)),
+                    no_default_skips=(True if getattr(args, "index_all", None)
+                                      else (False if getattr(args, "default_skips", None) else None)),
+                    progress=prog.update if prog.enabled else None,
+                    **common,
+                )
+            finally:
+                prog.finish()
             have = {r["path"] for r in rows}
             rows += [r for r in disk_rows if r["path"] not in have]
             if recent:
@@ -279,7 +287,13 @@ def cmd_schema(args):
 
     from .schema import fetch_postgres_schema, format_schema
     if getattr(args, "pg", None):
-        tables = fetch_postgres_schema(args.pg)
+        # live schema fetch can take seconds against a real server
+        prog = Progress()
+        prog.start()
+        try:
+            tables = fetch_postgres_schema(args.pg)
+        finally:
+            prog.finish()
         rows = [{"name": n, "source": "postgresql", "columns": t["columns"], "fks": t["fks"]}
                 for n, t in sorted(tables.items())]
         if getattr(args, "html", None):

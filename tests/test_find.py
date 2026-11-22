@@ -456,6 +456,19 @@ class TestFindDiskFallback(unittest.TestCase):
         self.assertNotIn("ignored_dir/tmp_hidden.py", rows)
         self.assertNotIn("migrations/0001_initial.py", rows)  # migrations/ is a dir skip
 
+    def test_find_on_disk_reports_progress(self):
+        from xzagent.find import find_on_disk
+        calls = []
+        rows = find_on_disk(self.root, pattern="tmp_*",
+                            progress=lambda d, t, n: calls.append((d, t, n)))
+        self.assertTrue(rows)
+        self.assertTrue(calls)  # the final summary call always fires
+        done, total, note = calls[-1]
+        self.assertEqual(total, 0)                      # indeterminate walk
+        self.assertGreater(done, 0)                     # files scanned
+        self.assertIn("matches", note)
+        self.assertNotIn(None, {d for d, _, _ in calls})
+
     def test_cli_shows_noise_matches_marked(self):
         out = self._run(["--db", self.db, "find", self.root, "tmp_*"])
         self.assertIn("tmp_probe.py", out)
