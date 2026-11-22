@@ -18,7 +18,7 @@ GREEN = (126, 231, 135)   # #7ee787
 WHITE = (230, 237, 243)   # #e6edf3
 GRAY = (139, 148, 158)    # #8b949e
 BLUE = (121, 192, 255)    # #79c0ff
-TRACK = (33, 38, 45)      # #21262d: empty bar cells
+TRACK = (61, 68, 89)      # #3d4459: empty bar cells, visible on any dark bg
 
 RESET = "\x1b[0m"
 BOLD = "\x1b[1m"

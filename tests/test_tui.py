@@ -20,6 +20,11 @@ class TestBarBasics(unittest.TestCase):
         self.assertEqual(bar(-1.0, 3, colored=False), "\u2591" * 3)
         self.assertEqual(bar(2.0, 3, colored=False), "\u2588" * 3)
 
+
+    def test_track_cells_use_visible_gray(self):
+        s = bar(0.0, 4, colored=True)
+        self.assertIn("38;2;61;68;89", s)   # visible on darwest backgrounds
+
     def test_colored_bar_has_ansi_and_blocks(self):
         s = bar(1.0, 6, colored=True)
         self.assertIn("\x1b[38;2;", s)
