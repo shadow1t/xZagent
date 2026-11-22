@@ -134,5 +134,82 @@ class TestFindAndFilters(unittest.TestCase):
         con2.close()
 
 
+class TestDefaultNoiseExclusions(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _make(self, root, files):
+        for rel, content in files.items():
+            path = os.path.join(root, rel)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(content)
+
+    def test_noise_names_skipped_by_default(self):
+        root = os.path.join(self.tmp.name, "noisy")
+        os.makedirs(root)
+        self._make(root, {
+            "app.py": "def keep():\n    return True\n",
+            "tmp_debug_probe.py": "def t():\n    pass\n",
+            "temp_thing.py": "def t():\n    pass\n",
+            "backup_bak.py": "def t():\n    pass\n",
+            "app.min.js": "var a=1\n",
+            "package-lock.json": "{}\n",
+            "run.log": "noise\n",
+            "migrations/0001_initial.py": "def up():\n    pass\n",
+            "__snapshots__/a.test.js.snap": "x\n",
+            "node_modules/lib/index.js": "var x=2\n",
+        })
+        paths = {f.path for f in scan(root)}
+        self.assertIn("app.py", paths)
+        for gone in ("tmp_debug_probe.py", "temp_thing.py", "backup_bak.py",
+                     "app.min.js", "package-lock.json", "run.log",
+                     "migrations/0001_initial.py", "__snapshots__/a.test.js.snap",
+                     "node_modules/lib/index.js"):
+            self.assertNotIn(gone, paths)
+
+    def test_negation_reincludes_defaults(self):
+        root = os.path.join(self.tmp.name, "negated")
+        os.makedirs(root)
+        self._make(root, {
+            "app.py": "def keep():\n    return True\n",
+            "tmp_skip.py": "def t():\n    pass\n",
+            "tmp_keep.py": "def t():\n    pass\n",
+            "migrations/0001_deep.py": "def up():\n    pass\n",
+            ".xzagentignore": "!migrations/\n!tmp_keep.py\n",
+        })
+        paths = {f.path for f in scan(root)}
+        self.assertIn("app.py", paths)
+        self.assertIn("tmp_keep.py", paths)
+        self.assertIn("migrations/0001_deep.py", paths)
+        self.assertNotIn("tmp_skip.py", paths)
+
+    def test_migrations_still_feed_db_schema(self):
+        root = os.path.join(self.tmp.name, "schema")
+        os.makedirs(root)
+        self._make(root, {
+            "models.py": "class Order:\n    pass\n",
+            "migrations/0001_initial.py": (
+                "from django.db import migrations, models\n\n"
+                "class Migration(migrations.Migration):\n"
+                "    operations = [\n"
+                "        migrations.CreateModel(\n"
+                "            name='Purchase',\n"
+                "            fields=[('id', models.AutoField(primary_key=True)),],\n"
+                "        ),\n"
+                "    ]\n"
+            ),
+        })
+        con = connect(build_index(root))
+        names = {r["name"] for r in con.execute("SELECT name FROM db_tables")}
+        paths = {r["path"] for r in con.execute("SELECT path FROM files")}
+        con.close()
+        self.assertIn("Purchase", names)
+        self.assertNotIn("migrations/0001_initial.py", paths)
+
+
 if __name__ == "__main__":
     unittest.main()

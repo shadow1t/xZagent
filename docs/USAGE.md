@@ -74,22 +74,40 @@ ctxp ask . "task" --top 0                      # all matches, no cap
 `--recent` adds a small recency penalty so, among equally relevant matches,
 the most recently edited files come first.
 
-## Permanently excluding files from the index: `.xzagentignore`
+## Permanently excluding files from the index: `.xzagentignore` + defaults
 
-Create a `.xzagentignore` file in the project root (same syntax as
-`.gitignore`). Anything it matches is never indexed at all, so it never
-appears in searches, maps, or packs:
+**Built-in defaults (no setup needed).** The indexer never reads, by name:
+
+- temp/debug probe files: `tmp_*`, `temp_*`, `*_tmp.*`, `*_temp.*`, `*.tmp`
+- backups & editor droppings: `*.bak`, `*_bak.*`, `*.orig`, `*.rej`, `*.patch`, `*.swp`
+- minified/generated bundles: `*.min.js`, `*.min.css`, `*.bundle.js`, `*.chunk.js`
+- lockfiles: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`,
+  `composer.lock`, `cargo.lock`, `go.sum`, ...
+- `*.log` files
+- framework artifact folders: `migrations/`, `__snapshots__/`, `.expo/`,
+  `.angular/`, `.svelte-kit/`, `Pods/`, `.gradle/`, `.terraform/`, ... plus the
+  usual `node_modules/`, `dist/`, `build/`, `coverage/`, caches, ...
+
+> Django/Flask `migrations/` are skipped from *code search* (framework noise),
+> but still feed the `db_schema` tool — schema intelligence keeps working.
+
+**Re-include any default** with a `!pattern` negation rule in `.xzagentignore`:
 
 ```gitignore
-# .xzagentignore — content unnecessary for code intelligence
-*.md
-docs/
-generated/
-**/*.min.js
+# .xzagentignore
+!migrations/        # index migrations after all (you actively edit them)
+!tmp_*.mjs          # those tmp_ mjs probes are actually load-bearing
 ```
 
-`.gitignore` and built-in defaults (`node_modules/`, `dist/`, `build/`,
-`vendor/`, `coverage/`, `target/`, caches, ...) are always honored too.
+**Exclude anything else** with normal gitignore patterns:
+
+```gitignore
+docs/
+generated/
+**/*.test.tsx
+```
+
+`.gitignore` and its negation rules are always honored too.
 
 ## The repo map
 

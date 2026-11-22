@@ -36,7 +36,7 @@ The map never hides a directory: the tree always shows **every folder** and only
 
 ## Staying focused
 
-Target exactly the files a task needs (`ctxp find "api_v2*"` instead of every API file across versions), skip noise at search time (`--skip-ext .md,.txt`, `--skip-dirs docs,generated`), prefer recent edits (`--recent`), and exclude anything permanently from the index with a `.xzagentignore` file in the project root (gitignore syntax).
+Target exactly the files a task needs (`ctxp find "api_v2*"` instead of every API file across versions), skip noise at search time (`--skip-ext .md,.txt`, `--skip-dirs docs,generated`), prefer recent edits (`--recent`), and exclude anything permanently from the index with a `.xzagentignore` file in the project root (gitignore syntax). The indexer also skips obvious noise **by name** out of the box: `tmp_*` probes, `*_bak.*` backups, `*.min.js` bundles, lockfiles, `*.log`, and framework artifact folders like `migrations/` (which still feed `db_schema`). Re-include any default with a `!pattern` rule in `.xzagentignore`.
 
 ## MCP server (for Claude Code / Cursor / Windsurf)
 
