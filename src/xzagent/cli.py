@@ -10,6 +10,7 @@ from .index import connect, default_db_path, ensure_index
 from .map import repo_map
 from .packer import build_pack
 from .rank import rank_files
+from .selfupdate import child_finish, selfupdate
 from . import __version__
 from .tui import BLUE, CYAN, GRAY, GREEN, VIOLET, WHITE, Progress, bar, color_enabled, paint
 
@@ -50,6 +51,19 @@ def _open_db(args):
     finally:
         prog.finish()
     return root, db, connect(db)
+
+
+def cmd_update(args):
+    prog = Progress()
+    prog.start()
+    try:
+        return selfupdate(
+            path_arg=getattr(args, "src", None),
+            no_pull=bool(getattr(args, "no_pull", False)),
+            progress=prog.update if prog.enabled else None,
+        )
+    finally:
+        prog.finish()
 
 
 def cmd_index(args):
@@ -393,6 +407,15 @@ def build_parser():
     sp = sub.add_parser("serve", help="Run the MCP stdio server for this project")
     add_root(sp)
     sp.set_defaults(func=cmd_serve)
+
+    sp = sub.add_parser(
+        "update",
+        help="Update the xzagent CLI itself: git pull + reinstall, one command (no more pip uninstall/install)")
+    sp.add_argument("src", nargs="?", default=None,
+                    help="Source folder (your xZagent clone); default: remembered source, an enclosing checkout, or GitHub")
+    sp.add_argument("--no-pull", action="store_true",
+                    help="Skip git pull and reinstall the clone's current files as-is")
+    sp.set_defaults(func=cmd_update)
     return p
 
 
@@ -442,6 +465,11 @@ def _hoist_global_opts(argv):
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
+    # Hidden receiver of the Windows self-update handoff
+    # (python -m xzagent __update-child SPEC PPID): intentionally NOT an
+    # argparse subcommand, so it never appears in `ctxp -h`.
+    if len(argv) >= 3 and argv[0] == "__update-child":
+        return child_finish(argv[1], argv[2])
     args = build_parser().parse_args(_hoist_global_opts(argv))
     return args.func(args)
 

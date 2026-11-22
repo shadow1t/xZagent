@@ -66,6 +66,7 @@ The index lives at `.xzagent/index.db` and refreshes automatically when files ch
 - 🚀 **Fast**: indexed Flask's 227 files in **0.85 s** on a modest sandbox
 - 🕵️ **Private by design**: no network calls, no API keys, no telemetry. Ever. Works on air-gapped machines and planes
 - 🎨 **A real terminal experience**: violet→cyan gradient ranking bars in `ask`, and a live progress bar (spinner + counts + percent + phase notes) during ANY index build -- explicit or the automatic rebuild behind `ask`/`map`/`find` -- with a guaranteed-animation ticker so the CLI never looks stuck. Auto-disabled when piped, respects `NO_COLOR`
+- 🔄 **One-command self-update**: `ctxp update` pulls your clone and reinstalls in place -- no more `pip uninstall && pip install`, and it handles the Windows `ctxp.exe` file lock for you
 - 🧰 **Zero dependencies**: pure Python 3.9+ standard library. `pip install` and done
 - 🐘 **DB-aware**: even skips `migrations/` while still feeding the `db_schema` tool with tables, columns and foreign keys
 
@@ -78,6 +79,12 @@ pip install .          # gives you the `ctxp` command
 ```
 
 Requires Python ≥ 3.9. Pure standard library: nothing else to download, ever.
+
+Upgrading is one command (`git pull` + reinstall, no `pip uninstall` needed):
+
+```bash
+ctxp update            # from your clone, an enclosing checkout, or GitHub
+```
 
 ## Quickstart
 

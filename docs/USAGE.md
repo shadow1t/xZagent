@@ -34,6 +34,7 @@ ctxp graph [ROOT] SYMBOL          # definitions/callers/callees of a symbol
 ctxp graph [ROOT] --path FILE     # imports + calls linked to a file
 ctxp schema [ROOT] [--pg DSN]     # DB schema (tables, columns, FKs)
 ctxp serve [ROOT]                 # MCP server (stdio) for AI apps
+ctxp update [SRC]                 # update the CLI itself (see below)
 ```
 
 Global options `--db PATH`, `--reindex`, `--index-all`, `--default-skips` and
@@ -363,6 +364,35 @@ All filtering parameters at a glance:
 Tips: use English keywords in `find_files` queries (ranking matches code
 tokens); absolute or root-prefixed paths are accepted by `file_outline`,
 `neighbors`, and `call_graph`.
+
+## Updating the CLI: `ctxp update`
+
+One command replaces the whole `git pull` + `pip uninstall` + `pip
+install --no-cache-dir` ritual. Run it from anywhere:
+
+```bash
+ctxp update            # uses your clone, an enclosing checkout, or GitHub
+ctxp update D:\path\to\xZagent   # explicit source folder (remembered for next time)
+ctxp update --no-pull   # reinstall the clone's current files without pulling
+```
+
+What it does:
+
+1. Resolves the source: the folder argument, the source remembered from
+   your last update (`~/.xzagent/config.json`), an xZagent checkout
+   containing your current directory, or the GitHub repo itself
+   (`pip install git+...`, no local clone needed).
+2. If the source is a git clone: `git pull --ff-only` (with the usual
+   live progress line).
+3. Reinstalls via `pip install --force-reinstall --no-deps --no-cache-dir`
+   and reports the version jump: `✔ Updated xzagent 0.2.2 → 0.2.3`.
+4. On Windows the running `ctxp.exe` is file-locked, so the install is
+   handed to a fresh interpreter that waits for the current one to exit,
+   reinstalls, and prints the result in the same console — one command,
+   nothing to uninstall by hand.
+
+The heavy step is silent unless it fails: then you get the last pip/git
+lines and `ctxp update` to retry after fixing.
 
 ## Troubleshooting
 
