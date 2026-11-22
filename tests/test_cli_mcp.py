@@ -235,3 +235,70 @@ class TestSetupCmd(unittest.TestCase):
         cfg = json.loads(out)
         self.assertIn("xzagent", cfg["mcpServers"])
         self.assertFalse(os.path.isfile(os.path.join(self.root, ".mcp.json")))
+
+
+class TestSetupGlobalClients(unittest.TestCase):
+    """antigravity/windsurf: entries in this MACHINE's global config."""
+
+    def setUp(self):
+        self.old_env = {k: os.environ.get(k)
+                        for k in ("HOME", "USERPROFILE") if os.environ.get(k)}
+        self.home = tempfile.mkdtemp()
+        os.environ["HOME"] = self.home
+        os.environ["USERPROFILE"] = self.home
+        self.projA = make_sample_project(os.path.join(self.home, "proj_a"))
+        self.projB = make_sample_project(os.path.join(self.home, "proj_b"))
+
+    def tearDown(self):
+        for k, v in list(self.old_env.items()):
+            os.environ[k] = v
+        for k in ("HOME", "USERPROFILE"):
+            if k not in self.old_env:
+                os.environ.pop(k, None)
+        import shutil
+        shutil.rmtree(self.home, ignore_errors=True)
+
+    def _cfg_path(self):
+        return os.path.join(self.home, ".gemini", "antigravity",
+                            "mcp_config.json")
+
+    def _run(self, argv):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = main(argv)
+        return rc, buf.getvalue()
+
+    def test_antigravity_writes_this_machines_global_file(self):
+        self.assertFalse(os.path.isfile(self._cfg_path()))
+        rc, out = self._run(["setup", self.projA, "--client", "antigravity"])
+        self.assertEqual(rc, 0)
+        with open(self._cfg_path(), encoding="utf-8") as fh:
+            entry = json.load(fh)["mcpServers"]["xzagent"]
+        self.assertEqual(entry["args"], ["serve", os.path.abspath(self.projA)])
+        self.assertTrue(entry["command"].endswith("ctxp"))
+        self.assertIn("never in a commit", out)
+
+    def test_second_project_gets_its_own_key(self):
+        self._run(["setup", self.projA, "--client", "antigravity"])
+        self._run(["setup", self.projB, "--client", "antigravity"])
+        with open(self._cfg_path(), encoding="utf-8") as fh:
+            servers = json.load(fh)["mcpServers"]
+        self.assertEqual(servers["xzagent"]["args"],
+                         ["serve", os.path.abspath(self.projA)])
+        self.assertEqual(servers["xzagent_proj_b"]["args"],
+                         ["serve", os.path.abspath(self.projB)])
+        # re-running project A reuses A's key: still exactly two servers
+        self._run(["setup", self.projA, "--client", "antigravity"])
+        with open(self._cfg_path(), encoding="utf-8") as fh:
+            self.assertEqual(len(json.load(fh)["mcpServers"]), 2)
+
+    def test_remove_takes_only_this_project_out(self):
+        self._run(["setup", self.projA, "--client", "antigravity"])
+        self._run(["setup", self.projB, "--client", "antigravity"])
+        rc, out = self._run(["setup", self.projA, "--client", "antigravity",
+                             "--remove"])
+        self.assertEqual(rc, 0)
+        with open(self._cfg_path(), encoding="utf-8") as fh:
+            servers = json.load(fh)["mcpServers"]
+        self.assertNotIn("xzagent", servers)
+        self.assertIn("xzagent_proj_b", servers)

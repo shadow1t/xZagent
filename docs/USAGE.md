@@ -281,6 +281,8 @@ ctxp map . --full -o map.md       # every file, no capping
 ctxp setup              # writes .mcp.json (Claude Code) + .cursor/mcp.json
 ctxp setup --client claude --client cursor    # pick clients explicitly
 ctxp setup --client generic                  # prints a snippet for any client
+ctxp setup --client antigravity    # this machine's Antigravity global config
+ctxp setup --client windsurf        # ... and Windsurf's
 ctxp setup --remove      # takes the xzagent server back out of the configs
 ctxp setup --absolute   # THIS machine's paths instead (never commit it)
 ```
@@ -321,9 +323,17 @@ Same `mcpServers` block:
 }
 ```
 
-### Antigravity
-Edit `%USERPROFILE%\.gemini\antigravity\mcp_config.json` with the same
-`mcpServers` block, then restart the app.
+### Antigravity / Windsurf
+One command, inside the project:
+```bash
+ctxp setup --client antigravity     # also: --client windsurf
+```
+This edits `%USERPROFILE%\.gemini\antigravity\mcp_config.json`
+(Windsurf: `~/.codeium/windsurf/mcp_config.json`) for you: an absolute
+entry for this machine and THIS project, plus a per-project server key,
+so a second project in the same file becomes `xzagent_<folder>` instead
+of overwriting the first. These files are machine-global (not project
+files, never committed). Restart the app afterwards and the tools appear.
 
 ## Multiple projects
 

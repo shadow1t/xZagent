@@ -338,6 +338,16 @@ MCP_CLIENT_FILES = {
     "cursor": ".cursor/mcp.json",    # Cursor, project scope
 }
 
+MCP_GLOBAL_FILES = {
+    # Whole-machine config files OUTSIDE any project, so they never
+    # land in a commit. These clients do not launch the server with a
+    # guaranteed project cwd, so their entries are always absolute,
+    # and the server key is per-project (xzagent, xzagent_<folder>, ...)
+    # so several projects can coexist in one file.
+    "antigravity": ".gemini/antigravity/mcp_config.json",
+    "windsurf": ".codeium/windsurf/mcp_config.json",
+}
+
 
 def _mcp_entry(root, absolute=False):
     """A stdio server entry for MCP client configs.
@@ -359,8 +369,8 @@ def _mcp_entry(root, absolute=False):
     return {"command": "ctxp", "args": ["serve", "."]}
 
 
-def _apply_mcp_config(path, entry, remove):
-    """Add (or remove) the xzagent server in one mcpServers-format file."""
+def _read_servers(path):
+    """Load cfg + the mcpServers dict from one config file, tolerantly."""
     cfg = {}
     if os.path.isfile(path):
         try:
@@ -373,10 +383,16 @@ def _apply_mcp_config(path, entry, remove):
     servers = cfg.get("mcpServers")
     if not isinstance(servers, dict):
         servers = {}
+    return cfg, servers
+
+
+def _apply_mcp_config(path, entry, remove, key="xzagent"):
+    """Add (or remove) one server in an mcpServers-format file."""
+    cfg, servers = _read_servers(path)
     if remove:
-        servers.pop("xzagent", None)
+        servers.pop(key, None)
     else:
-        servers["xzagent"] = entry
+        servers[key] = entry
     if not servers:
         try:
             os.unlink(path)
@@ -392,12 +408,35 @@ def _apply_mcp_config(path, entry, remove):
     return path
 
 
-def cmd_setup(args):
-    """`ctxp setup`: write MCP client configs INSIDE the project.
+def _global_server_key(servers, root):
+    """Pick a stable, unique server key inside a GLOBAL config file.
 
-    The configs travel with the repo, so an AI agent (or a teammate)
-    opening the project finds the tools ready: no absolute-path
-    fiddling, no mountains of manual JSON.
+    Reuses the key already pointing at this project; otherwise takes
+    'xzagent', then 'xzagent_<folder>' so a second project in the same
+    global file cannot overwrite the first one.
+    """
+    for key, entry in servers.items():
+        if (key.startswith("xzagent") and isinstance(entry, dict)
+                and entry.get("args", [None, None])[1:2] == [root]):
+            return key
+    if "xzagent" not in servers:
+        return "xzagent"
+    base = "xzagent_" + (os.path.basename(root.rstrip("/\\")) or "proj")
+    key, n = base, 2
+    while key in servers:
+        key = "%s_%d" % (base, n)
+        n += 1
+    return key
+
+
+def cmd_setup(args):
+    """`ctxp setup`: write MCP client configs for this project.
+
+    Project-scoped clients (claude, cursor) get portable configs
+    INSIDE the project, safe to commit. Whole-machine clients
+    (antigravity, windsurf) get an absolute entry in their global
+    config file, so the app discovers xzagent on this machine without
+    any manual JSON editing.
     """
     root = os.path.abspath(args.root)
     if not os.path.isdir(root):
@@ -414,20 +453,35 @@ def cmd_setup(args):
         print(json.dumps(cfg, indent=2))
         return 0
     verb = "removed from" if remove else "written to"
+    touched_project_cfg = False
     for client in clients:
-        rel = MCP_CLIENT_FILES[client]
-        path = _apply_mcp_config(os.path.join(root, *rel.split("/"),
-                                              ),
-                                 _mcp_entry(root, absolute), remove)
+        if client in MCP_CLIENT_FILES:      # project-scoped, portable
+            rel = MCP_CLIENT_FILES[client]
+            path = _apply_mcp_config(os.path.join(root, *rel.split("/")),
+                                     _mcp_entry(root, absolute), remove)
+            key = "xzagent"
+            show = os.path.relpath(path, root) if path else None
+            where = "project config"
+            touched_project_cfg = True
+        else:                              # global, machine-level client
+            home = os.path.expanduser("~")
+            rel = MCP_GLOBAL_FILES[client]
+            path = os.path.join(home, *rel.split("/"))
+            key = _global_server_key(_read_servers(path)[1], root)
+            path = _apply_mcp_config(path, _mcp_entry(root, absolute=True),
+                                     remove, key=key)
+            show = path if path else None
+            where = "global machine config \u00b7 never in a commit"
         if color_enabled():
             head = paint("\u2714", GREEN)
             if path:
-                print("%s%s%s%s%s%s%s" % (
+                print("%s%s%s%s%s%s%s%s" % (
                     head, paint(" MCP config " + verb, WHITE),
                     paint(" \u00b7 ", GRAY), paint(client, CYAN),
                     paint(" \u2192 ", GRAY),
-                    paint(os.path.relpath(path, root), WHITE, bold=True),
-                    paint("  \u00b7 server: xzagent", GRAY)))
+                    paint(show, WHITE, bold=True),
+                    paint("  \u00b7 server: %s" % key, GRAY),
+                    paint("  \u00b7 %s" % where, GRAY)))
             else:
                 print("%s%s%s%s%s" % (
                     head, paint(" MCP config emptied", WHITE),
@@ -435,31 +489,41 @@ def cmd_setup(args):
                     paint(" \u00b7 no servers left, file removed", GRAY)))
         else:
             if path:
-                print("MCP config %s: %s -> %s" % (verb, client,
-                                                    os.path.relpath(path, root)))
+                print("MCP config %s: %s -> %s (server %s, %s)"
+                      % (verb, client, show, key, where))
             else:
                 print("MCP config %s: %s (no servers left, file removed)"
                       % (verb, client))
     if not remove:
-        flavor = ("absolute paths · this machine only, do NOT commit"
-                  if absolute else
-                  "portable · no machine paths, safe to commit")
+        flavor = ("" if touched_project_cfg else "global config \u00b7 machine-wide, do NOT commit")
+        if absolute and touched_project_cfg:
+            flavor = "absolute paths \u00b7 this machine only, do NOT commit"
+        elif touched_project_cfg:
+            flavor = "portable \u00b7 no machine paths, safe to commit"
         if color_enabled():
-            print("%s%s%s%s" % (
-                paint("\u21b3 ", GRAY),
-                paint("Claude Code: open this project and approve the tools "
-                      "once (/mcp to check). Cursor: one restart.", GRAY),
-                paint("\n\u21b3 ", GRAY) +
-                paint("Commit the config: any agent opening the project "
-                      "gets the tools with zero setup.", GRAY) +
-                paint("\n\u21b3 ", GRAY) +
-                paint(flavor, GRAY)))
+            notes = []
+            if touched_project_cfg:
+                notes.append("Claude Code: open this project and approve the"
+                             " tools once (/mcp to check). Cursor: one restart.")
+                notes.append("Commit the config: any agent opening the"
+                             " project gets the tools with zero setup.")
+            else:
+                notes.append("Antigravity / Windsurf: restart the app, the"
+                             " tools appear in its tool list.")
+            notes.append(flavor)
+            print(paint("\u21b3 ", GRAY) +
+                  paint(("\n\u21b3 ").join(n for n in notes if n), GRAY))
         else:
-            print("Claude Code: open this project and approve the tools "
-                  "once (/mcp to check). Cursor: one restart.")
-            print("Commit the config: any agent opening the project gets "
-                  "the tools with zero setup.")
-            print("Config flavor: " + flavor)
+            if touched_project_cfg:
+                print("Claude Code: open this project and approve the tools "
+                      "once (/mcp to check). Cursor: one restart.")
+                print("Commit the config: any agent opening the project "
+                      "gets the tools with zero setup.")
+            else:
+                print("Antigravity / Windsurf: restart the app, the tools "
+                      "appear in its tool list.")
+            if flavor:
+                print("Config flavor: " + flavor)
     return 0
 
 
@@ -586,8 +650,11 @@ def build_parser():
     sp = sub.add_parser("setup", help="Write MCP client configs into the project (Claude Code, Cursor): agents find the tools with zero setup")
     add_root(sp)
     sp.add_argument("--client", action="append",
-                    choices=sorted(MCP_CLIENT_FILES) + ["generic"],
-                    help="Which client to configure (default: claude + cursor; repeatable)")
+                    choices=(sorted(set(list(MCP_CLIENT_FILES)
+                                        + list(MCP_GLOBAL_FILES)))
+                             + ["generic"]),
+                    help="Which client to configure (default: claude + cursor; "
+                         "antigravity/windsurf write this machine's global config; repeatable)")
     sp.add_argument("--remove", action="store_true",
                     help="Remove the xzagent server from the configs instead")
     sp.add_argument("--absolute", action="store_true",
