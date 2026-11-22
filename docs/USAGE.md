@@ -41,6 +41,29 @@ Global options `--db PATH`, `--reindex`, `--index-all`, `--default-skips` and
 (`ctxp --reindex map .` and `ctxp map . --reindex` are equivalent — handy in
 PowerShell, where options usually go at the end).
 
+## Colors, ranking bars and live progress
+
+On an interactive terminal the CLI is colored:
+
+- `ctxp index` renders a live one-line progress bar (spinner + violet→cyan
+  gradient) with `done/total` counts and a percent, plus phase notes
+  (`scanning files`, `indexing`, `resolving import/call graph`), so big repos
+  never look stuck. The line is erased before the final summary
+  (`✔ Indexed 227 files in 0.50s → .xzagent/index.db`).
+- `ctxp ask` prints a `✔ N most relevant files (out of TOTAL)` header followed
+  by rows: a cyan rank number, the bold path, a violet→cyan gradient bar
+  showing the relative score of each hit, and its ranking reasons in gray.
+
+Colors never corrupt machine output:
+
+- piped/redirected output (`ctxp ask ... | grep`, scripts, CI, the MCP
+  server, file writes) is byte-for-byte the plain-text format it always was
+- `NO_COLOR=1` (or `TERM=dumb`) disables colors; progress still redraws on
+  the same line, without ANSI attributes
+- `FORCE_COLOR=1` forces colors on (useful for demos/screenshots)
+- the progress bar goes to **stderr**, so `ctxp pack ... -o context.md`
+  writes clean files even while progress animates
+
 ## Targeting files: `ctxp find`
 
 Use this when the task names specific files or a versioned subset, so the

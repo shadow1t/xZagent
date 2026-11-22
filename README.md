@@ -7,7 +7,7 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Dependencies: 0](https://img.shields.io/badge/dependencies-0-success)](#install)
 [![100% offline](https://img.shields.io/badge/100%25-offline-7c3aed)](#private-by-design)
-[![Tests: 63 passing](https://img.shields.io/badge/tests-63%20passing-success)](#measured-not-estimated)
+[![Tests: 76 passing](https://img.shields.io/badge/tests-76%20passing-success)](#measured-not-estimated)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/shadow1t/xZagent?style=social)](https://github.com/shadow1t/xZagent/stargazers)
 
@@ -65,6 +65,7 @@ The index lives at `.xzagent/index.db` and refreshes automatically when files ch
 - 🗺️ **A repo map that scales**: every directory is always shown, only files per directory are capped, so a 3,000-file repo still renders a readable structure (`--full` for everything)
 - 🚀 **Fast**: indexed Flask's 227 files in **0.85 s** on a modest sandbox
 - 🕵️ **Private by design**: no network calls, no API keys, no telemetry. Ever. Works on air-gapped machines and planes
+- 🎨 **A real terminal experience**: violet→cyan gradient ranking bars in `ask`, and a live progress bar (spinner + counts + percent + phase notes) while indexing, so big repos never look stuck. Auto-disabled when piped, respects `NO_COLOR`
 - 🧰 **Zero dependencies**: pure Python 3.9+ standard library. `pip install` and done
 - 🐘 **DB-aware**: even skips `migrations/` while still feeding the `db_schema` tool with tables, columns and foreign keys
 
@@ -130,7 +131,7 @@ Real numbers from this repository's tests and demos (Flask 3.1.0, 227 files, mod
 | Fresh index of the repo | **0.85 s** |
 | `ask "fix session login security"` | top 3 hits are exactly the right modules (`sessions.py`, `testing.py`, `app.py`) |
 | `pack` output for that task | **39.9 KB** of context vs **329 KB** of raw `src/` (8× smaller, and that's before ignoring docs and examples) |
-| Test suite | **63 tests, ~6 s**, stdlib only |
+| Test suite | **76 tests, ~6 s**, stdlib only |
 
 ## Private by design
 
@@ -157,7 +158,7 @@ AGENTS.md       guidance for AI agents hacking on xZagent itself
 PRs are welcome. The project is deliberately stdlib-only: please keep new features dependency-free. Run the suite before opening a PR:
 
 ```bash
-python -m unittest discover -s tests -v   # 63 tests
+python -m unittest discover -s tests -v   # 76 tests
 ```
 
 ## License

@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import sys
+import time
 
 from .find import find_matching, recently_modified
 from .graph import call_graph, neighbors
@@ -9,6 +10,7 @@ from .index import connect, default_db_path, ensure_index
 from .map import repo_map
 from .packer import build_pack
 from .rank import rank_files
+from .tui import BLUE, CYAN, GRAY, GREEN, VIOLET, WHITE, Progress, bar, color_enabled, paint
 
 
 def _split_skips(value):
@@ -21,7 +23,7 @@ def _split_skips(value):
     return out
 
 
-def _open_db(args):
+def _open_db(args, progress=None):
     root = os.path.abspath(args.root)
     index_all = getattr(args, "index_all", None)
     default_skips = getattr(args, "default_skips", None)
@@ -32,14 +34,26 @@ def _open_db(args):
         root, args.db, force=args.reindex,
         no_default_skips=no_default_skips,
         extra_ignores=_split_skips(getattr(args, "skip", None)),
+        progress=progress,
     )
     return root, db, connect(db)
 
 
 def cmd_index(args):
-    root, db, con = _open_db(args)
+    prog = Progress()
+    t0 = time.perf_counter()
+    root, db, con = _open_db(args, progress=prog.update if prog.enabled else None)
+    dt = time.perf_counter() - t0
     n = con.execute("SELECT COUNT(*) c FROM files").fetchone()["c"]
-    print("Indexed %d files -> %s" % (n, db))
+    prog.finish()
+    if color_enabled():
+        print("%s%s%s%s%s%s%s" % (
+            paint("\u2714", GREEN), paint(" Indexed ", WHITE),
+            paint("%d files" % n, GREEN, bold=True), paint(" in ", WHITE),
+            paint("%.2fs" % dt, GREEN, bold=True), paint("  \u2192  ", GRAY),
+            paint(db, GRAY)))
+    else:
+        print("Indexed %d files -> %s" % (n, db))
     return 0
 
 
@@ -61,7 +75,7 @@ def cmd_map(args):
 def cmd_ask(args):
     root, db, con = _open_db(args)
     top = args.top or 0
-    for path, score, reasons in rank_files(
+    ranked = rank_files(
         con, args.query,
         top_k=top,
         pattern=getattr(args, "pattern", None),
@@ -72,8 +86,28 @@ def cmd_ask(args):
         only_dirs=getattr(args, "only_dirs", None),
         recent_bias=getattr(args, "recent", False),
         no_tests=getattr(args, "no_tests", False),
-    ):
-        print("%.2f  %s  (%s)" % (score, path, ", ".join(reasons[:3])))
+    )
+    if not ranked:
+        print("No matching files.")
+        return 0
+    if color_enabled():
+        total_files = con.execute("SELECT COUNT(*) c FROM files").fetchone()["c"]
+        print("%s%s" % (
+            paint("\u2714 %d most relevant files" % len(ranked), GREEN, bold=True),
+            paint(" (out of %d)" % total_files, GRAY)))
+        path_w = max(len(p) for p, _s, _r in ranked)
+        hi, lo = ranked[0][1], ranked[-1][1]
+        span = (hi - lo) or 1.0
+        for i, (path, score, reasons) in enumerate(ranked, 1):
+            frac = (score - lo) / span if len(ranked) > 1 else 1.0
+            frac = max(frac, 0.08)
+            print("%s%s%s%s  %s" % (
+                paint("%2d" % i, CYAN, bold=True), paint("  ", WHITE),
+                paint(path.ljust(path_w), WHITE, bold=True), bar(frac, 12),
+                paint(", ".join(reasons[:3]), GRAY)))
+    else:
+        for path, score, reasons in ranked:
+            print("%.2f  %s  (%s)" % (score, path, ", ".join(reasons[:3])))
     return 0
 
 
@@ -107,6 +141,15 @@ def cmd_find(args):
     if not rows:
         print("No matching files.")
         return 0
+    if color_enabled():
+        for r in rows:
+            line = "%s %s  %s" % (
+                paint((r["lang"] or "text").ljust(5), BLUE),
+                paint(r["modified"], GRAY), paint(r["path"], WHITE, bold=True))
+            if r.get("symbols"):
+                line += "  " + paint("[" + ", ".join(r["symbols"][:4]) + "]", VIOLET)
+            print(line)
+        return 0
     for r in rows:
         line = "%-5s %s  %s" % (r["lang"] or "text", r["modified"], r["path"])
         if r.get("symbols"):
@@ -121,7 +164,14 @@ def cmd_pack(args):
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fh:
             fh.write(text)
-        print("Wrote %s" % args.output)
+        if color_enabled():
+            print("%s%s%s%s%s" % (
+                paint("\u2714 ", GREEN), paint(args.output, WHITE, bold=True),
+                paint(" ready", WHITE), paint(" \u00b7 ", GRAY),
+                paint("%.1f KB" % (len(text.encode("utf-8")) / 1024.0), CYAN, bold=True),
+            ))
+        else:
+            print("Wrote %s" % args.output)
     else:
         sys.stdout.write(text)
     return 0

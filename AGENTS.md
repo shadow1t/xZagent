@@ -58,3 +58,8 @@ or tests); `recent_files` + `skip_ext: ".md"` (what I edited, skip docs).
 - CLI equivalent (terminal): `ctxp index|map|find|ask|pack|graph|schema|serve`
   with the same filters as flags (`--only-dirs`, `--only-ext`, `--no-tests`,
   `--skip-ext`, `--skip-dirs`, `--pattern`, `--symbol`, `--recent`, `--top`). `ctxp -h` lists everything.
+- Terminal UX lives in `xzagent.tui` (colors, gradient bars, live progress).
+  Everything shows on a **stdout/stderr TTY only** and degrades to plain text
+  when piped: never parse colored output, and never assume a progress bar in
+  the stream. Machines consume `tui`-free output: module docstrings are the
+  contract.
