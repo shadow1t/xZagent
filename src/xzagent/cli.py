@@ -339,14 +339,24 @@ MCP_CLIENT_FILES = {
 }
 
 
-def _mcp_entry(root):
-    """Portable stdio server entry for MCP client configs.
+def _mcp_entry(root, absolute=False):
+    """A stdio server entry for MCP client configs.
 
-    The absolute ctxp path is used when resolvable, so client apps that
-    launch servers with a thin PATH still find the executable.
+    Portable (the default): `ctxp serve .` -- zero machine-specific
+    paths, so the committed config works for anyone who has ctxp
+    installed. Project-scoped MCP clients (Claude Code .mcp.json,
+    Cursor .cursor/mcp.json) launch servers with cwd = project root,
+    which is exactly what "." means.
+
+    absolute=True pins THIS machine's ctxp executable and project
+    path, for clients that launch from an unexpected cwd or have a
+    thin PATH. Never commit that flavor: it leaks your username and
+    breaks on every other machine.
     """
-    exe = shutil.which("ctxp")
-    return {"command": exe if exe else "ctxp", "args": ["serve", root]}
+    if absolute:
+        exe = shutil.which("ctxp")
+        return {"command": exe if exe else "ctxp", "args": ["serve", root]}
+    return {"command": "ctxp", "args": ["serve", "."]}
 
 
 def _apply_mcp_config(path, entry, remove):
@@ -396,17 +406,19 @@ def cmd_setup(args):
             "  tip: run ctxp setup inside the project, or pass its folder"
             % args.root)
     remove = bool(getattr(args, "remove", False))
+    absolute = bool(getattr(args, "absolute", False))
     clients = args.client or ["claude", "cursor"]
     if "generic" in clients:
         # any stdio MCP client: print a ready-to-paste snippet, nothing written
-        cfg = {"mcpServers": {"xzagent": _mcp_entry(root)}}
+        cfg = {"mcpServers": {"xzagent": _mcp_entry(root, absolute)}}
         print(json.dumps(cfg, indent=2))
         return 0
     verb = "removed from" if remove else "written to"
     for client in clients:
         rel = MCP_CLIENT_FILES[client]
-        path = _apply_mcp_config(os.path.join(root, *rel.split("/")),
-                                 _mcp_entry(root), remove)
+        path = _apply_mcp_config(os.path.join(root, *rel.split("/"),
+                                              ),
+                                 _mcp_entry(root, absolute), remove)
         if color_enabled():
             head = paint("\u2714", GREEN)
             if path:
@@ -429,19 +441,25 @@ def cmd_setup(args):
                 print("MCP config %s: %s (no servers left, file removed)"
                       % (verb, client))
     if not remove:
+        flavor = ("absolute paths · this machine only, do NOT commit"
+                  if absolute else
+                  "portable · no machine paths, safe to commit")
         if color_enabled():
-            print("%s%s%s" % (
+            print("%s%s%s%s" % (
                 paint("\u21b3 ", GRAY),
                 paint("Claude Code: open this project and approve the tools "
                       "once (/mcp to check). Cursor: one restart.", GRAY),
                 paint("\n\u21b3 ", GRAY) +
                 paint("Commit the config: any agent opening the project "
-                      "gets the tools with zero setup.", GRAY)))
+                      "gets the tools with zero setup.", GRAY) +
+                paint("\n\u21b3 ", GRAY) +
+                paint(flavor, GRAY)))
         else:
             print("Claude Code: open this project and approve the tools "
                   "once (/mcp to check). Cursor: one restart.")
             print("Commit the config: any agent opening the project gets "
                   "the tools with zero setup.")
+            print("Config flavor: " + flavor)
     return 0
 
 
@@ -572,6 +590,10 @@ def build_parser():
                     help="Which client to configure (default: claude + cursor; repeatable)")
     sp.add_argument("--remove", action="store_true",
                     help="Remove the xzagent server from the configs instead")
+    sp.add_argument("--absolute", action="store_true",
+                    help="Write THIS machine's absolute ctxp path and project path "
+                         "instead of the portable ctxp/\".\" (only for clients that "
+                         "launch from an odd cwd; never commit that flavor)")
     sp.set_defaults(func=cmd_setup)
 
     sp = sub.add_parser(

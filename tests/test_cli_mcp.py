@@ -191,10 +191,20 @@ class TestSetupCmd(unittest.TestCase):
             with open(os.path.join(self.root, *rel.split("/")), encoding="utf-8") as fh:
                 cfg = json.load(fh)
             entry = cfg["mcpServers"]["xzagent"]
-            self.assertEqual(entry["args"], ["serve", os.path.abspath(self.root)])
-            self.assertTrue(entry["command"].endswith("ctxp"))
+            # portable default: no machine paths anywhere, commit-safe
+            self.assertEqual(entry["args"], ["serve", "."])
+            self.assertEqual(entry["command"], "ctxp")
             self.assertIn(client, out)
         self.assertIn("zero setup", out)
+        self.assertIn("portable", out)
+
+    def test_setup_absolute_flag_pins_machine_paths(self):
+        rc, out = self._run(["setup", self.root, "--absolute"])
+        self.assertEqual(rc, 0)
+        with open(os.path.join(self.root, ".mcp.json"), encoding="utf-8") as fh:
+            entry = json.load(fh)["mcpServers"]["xzagent"]
+        self.assertEqual(entry["args"], ["serve", os.path.abspath(self.root)])
+        self.assertIn("do NOT commit", out)
 
     def test_setup_single_client(self):
         rc, out = self._run(["setup", self.root, "--client", "claude"])

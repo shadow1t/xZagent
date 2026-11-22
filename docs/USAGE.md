@@ -282,8 +282,14 @@ ctxp setup              # writes .mcp.json (Claude Code) + .cursor/mcp.json
 ctxp setup --client claude --client cursor    # pick clients explicitly
 ctxp setup --client generic                  # prints a snippet for any client
 ctxp setup --remove      # takes the xzagent server back out of the configs
+ctxp setup --absolute   # THIS machine's paths instead (never commit it)
 ```
-The configs live INSIDE the project, so they travel with it: any agent or
+The configs live INSIDE the project and are PORTABLE by default:
+`"command": "ctxp", "args": ["serve", "."]` -- no absolute paths, no
+usernames, nothing machine-specific, so the committed file works for
+anyone who has ctxp installed. (Project-scoped clients launch the
+server with cwd = project root, which is what "." means.) The configs
+travel with the project: any agent or
 teammate opening the project finds the tools ready, no path fiddling.
 Claude Code asks you to approve the project tools once (`/mcp` to check);
 Cursor needs one restart. Existing servers in those files are preserved.

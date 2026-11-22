@@ -131,9 +131,9 @@ cd your-project
 ctxp setup        # writes .mcp.json (Claude Code) + .cursor/mcp.json (Cursor)
 ```
 
-The config lives INSIDE the project, so it travels with it: commit `.mcp.json` and any agent or teammate opening the project finds the tools ready. Claude Code asks you to approve the project's tools once (`/mcp` to verify); Cursor needs one restart. An AI agent asked to "set up MCP" no longer burns your time fumbling with paths: `ctxp setup` is the whole job.
+The config lives INSIDE the project and is **portable by default**: `ctxp serve .`, no machine-specific paths, so it is safe to commit, and anyone with `ctxp` installed gets the tools working. Claude Code asks you to approve the project's tools once (`/mcp` to verify); Cursor needs one restart. An AI agent asked to "set up MCP" no longer burns your time fumbling with paths: `ctxp setup` is the whole job.
 
-`ctxp setup --client generic` prints a ready-to-paste snippet for any other stdio client (Windsurf, Antigravity...) with your project's path already in it, and `ctxp setup --remove` takes the server back out cleanly.
+`ctxp setup --client generic` prints a ready-to-paste snippet for any other stdio client (Windsurf, Antigravity...), and `ctxp setup --remove` takes the server back out cleanly. `ctxp setup --absolute` pins your machine's paths instead of the portable form, for clients that launch servers from an odd working directory; that flavor never goes in a commit.
 
 <details><summary>Manual configs (user scope, multiple projects)</summary>
 
