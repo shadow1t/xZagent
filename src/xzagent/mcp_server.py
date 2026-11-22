@@ -2,6 +2,8 @@ import json
 import os
 import sys
 
+from . import __version__
+
 from .find import find_matching
 from .graph import call_graph, neighbors
 from .index import connect, default_db_path, ensure_index
@@ -264,7 +266,7 @@ def serve(root, db_path=None):
                 result = {
                     "protocolVersion": msg.get("params", {}).get("protocolVersion", PROTOCOL_VERSION),
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "xzagent", "version": "0.1.0"},
+                    "serverInfo": {"name": "xzagent", "version": __version__},
                 }
             elif method == "ping":
                 result = {}

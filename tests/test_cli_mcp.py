@@ -168,3 +168,60 @@ class TestMcp(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestSetupCmd(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = make_sample_project(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _run(self, argv):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = main(argv)
+        return rc, buf.getvalue()
+
+    def test_setup_writes_both_configs(self):
+        rc, out = self._run(["setup", self.root])
+        self.assertEqual(rc, 0)
+        for rel, client in ((".mcp.json", "claude"),
+                            (".cursor/mcp.json", "cursor")):
+            with open(os.path.join(self.root, *rel.split("/")), encoding="utf-8") as fh:
+                cfg = json.load(fh)
+            entry = cfg["mcpServers"]["xzagent"]
+            self.assertEqual(entry["args"], ["serve", os.path.abspath(self.root)])
+            self.assertTrue(entry["command"].endswith("ctxp"))
+            self.assertIn(client, out)
+        self.assertIn("zero setup", out)
+
+    def test_setup_single_client(self):
+        rc, out = self._run(["setup", self.root, "--client", "claude"])
+        self.assertEqual(rc, 0)
+        self.assertTrue(os.path.isfile(os.path.join(self.root, ".mcp.json")))
+        self.assertFalse(os.path.isdir(os.path.join(self.root, ".cursor")))
+
+    def test_setup_keeps_other_servers(self):
+        path = os.path.join(self.root, ".mcp.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"mcpServers": {"other": {"command": "foo"}}}, fh)
+        self._run(["setup", self.root, "--client", "claude"])
+        with open(path, encoding="utf-8") as fh:
+            cfg = json.load(fh)
+        self.assertIn("other", cfg["mcpServers"])
+        self.assertIn("xzagent", cfg["mcpServers"])
+
+    def test_setup_remove_cleans_up(self):
+        self._run(["setup", self.root, "-–client".replace("-–", "--"), "claude"])
+        self.assertTrue(os.path.isfile(os.path.join(self.root, ".mcp.json")))
+        rc, out = self._run(["setup", self.root, "--client", "claude", "--remove"])
+        self.assertEqual(rc, 0)
+        self.assertFalse(os.path.isfile(os.path.join(self.root, ".mcp.json")))
+
+    def test_generic_client_prints_snippet_only(self):
+        rc, out = self._run(["setup", self.root, "--client", "generic"])
+        self.assertEqual(rc, 0)
+        cfg = json.loads(out)
+        self.assertIn("xzagent", cfg["mcpServers"])
+        self.assertFalse(os.path.isfile(os.path.join(self.root, ".mcp.json")))

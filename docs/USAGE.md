@@ -276,7 +276,22 @@ ctxp map . --full -o map.md       # every file, no capping
 
 ## MCP setup (AI apps)
 
-### Claude Code
+### One command, inside the project (recommended)
+```bash
+ctxp setup              # writes .mcp.json (Claude Code) + .cursor/mcp.json
+ctxp setup --client claude --client cursor    # pick clients explicitly
+ctxp setup --client generic                  # prints a snippet for any client
+ctxp setup --remove      # takes the xzagent server back out of the configs
+```
+The configs live INSIDE the project, so they travel with it: any agent or
+teammate opening the project finds the tools ready, no path fiddling.
+Claude Code asks you to approve the project tools once (`/mcp` to check);
+Cursor needs one restart. Existing servers in those files are preserved.
+
+Also add `ctxp setup` to your notes for AI agents (AGENTS.md or similar):
+"run ctxp setup once" is all an agent needs to wire itself up.
+
+### Claude Code (manual / user scope)
 ```bash
 claude mcp add xzagent -- ctxp serve /path/to/project
 ```

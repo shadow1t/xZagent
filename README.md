@@ -124,24 +124,31 @@ Every flag composes: `--pattern`, `--only-dirs`, `--only-ext`, `--no-tests`, `--
 
 ## Plug it into your AI tools (MCP)
 
-**Claude Code**
+One command, run inside your project, wires up the clients:
+
+```bash
+cd your-project
+ctxp setup        # writes .mcp.json (Claude Code) + .cursor/mcp.json (Cursor)
+```
+
+The config lives INSIDE the project, so it travels with it: commit `.mcp.json` and any agent or teammate opening the project finds the tools ready. Claude Code asks you to approve the project's tools once (`/mcp` to verify); Cursor needs one restart. An AI agent asked to "set up MCP" no longer burns your time fumbling with paths: `ctxp setup` is the whole job.
+
+`ctxp setup --client generic` prints a ready-to-paste snippet for any other stdio client (Windsurf, Antigravity...) with your project's path already in it, and `ctxp setup --remove` takes the server back out cleanly.
+
+<details><summary>Manual configs (user scope, multiple projects)</summary>
 
 ```bash
 claude mcp add xzagent -- ctxp serve /path/to/project
 ```
 
-**Cursor, Windsurf, and any stdio MCP client**
-
 ```json
 {
   "mcpServers": {
-    "xzagent": {
-      "command": "ctxp",
-      "args": ["serve", "/absolute/path/to/project"]
-    }
+    "xzagent": { "command": "ctxp", "args": ["serve", "/absolute/path/to/project"] }
   }
 }
 ```
+</details>
 
 From that moment the agent asks for the map instead of wandering, greps your indexed shortlist instead of grepping the whole disk, and checks the call graph before refactoring.
 

@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import shutil
 import sys
 import time
 
@@ -332,6 +333,118 @@ def cmd_serve(args):
     return 0
 
 
+MCP_CLIENT_FILES = {
+    "claude": ".mcp.json",           # Claude Code, project scope
+    "cursor": ".cursor/mcp.json",    # Cursor, project scope
+}
+
+
+def _mcp_entry(root):
+    """Portable stdio server entry for MCP client configs.
+
+    The absolute ctxp path is used when resolvable, so client apps that
+    launch servers with a thin PATH still find the executable.
+    """
+    exe = shutil.which("ctxp")
+    return {"command": exe if exe else "ctxp", "args": ["serve", root]}
+
+
+def _apply_mcp_config(path, entry, remove):
+    """Add (or remove) the xzagent server in one mcpServers-format file."""
+    cfg = {}
+    if os.path.isfile(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        except (OSError, ValueError):
+            cfg = {}
+    if not isinstance(cfg, dict):
+        cfg = {}
+    servers = cfg.get("mcpServers")
+    if not isinstance(servers, dict):
+        servers = {}
+    if remove:
+        servers.pop("xzagent", None)
+    else:
+        servers["xzagent"] = entry
+    if not servers:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        return None
+    cfg["mcpServers"] = servers
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(cfg, fh, indent=2)
+    return path
+
+
+def cmd_setup(args):
+    """`ctxp setup`: write MCP client configs INSIDE the project.
+
+    The configs travel with the repo, so an AI agent (or a teammate)
+    opening the project finds the tools ready: no absolute-path
+    fiddling, no mountains of manual JSON.
+    """
+    root = os.path.abspath(args.root)
+    if not os.path.isdir(root):
+        raise SystemExit(
+            "error: %s is not a directory\n"
+            "  tip: run ctxp setup inside the project, or pass its folder"
+            % args.root)
+    remove = bool(getattr(args, "remove", False))
+    clients = args.client or ["claude", "cursor"]
+    if "generic" in clients:
+        # any stdio MCP client: print a ready-to-paste snippet, nothing written
+        cfg = {"mcpServers": {"xzagent": _mcp_entry(root)}}
+        print(json.dumps(cfg, indent=2))
+        return 0
+    verb = "removed from" if remove else "written to"
+    for client in clients:
+        rel = MCP_CLIENT_FILES[client]
+        path = _apply_mcp_config(os.path.join(root, *rel.split("/")),
+                                 _mcp_entry(root), remove)
+        if color_enabled():
+            head = paint("\u2714", GREEN)
+            if path:
+                print("%s%s%s%s%s%s%s" % (
+                    head, paint(" MCP config " + verb, WHITE),
+                    paint(" \u00b7 ", GRAY), paint(client, CYAN),
+                    paint(" \u2192 ", GRAY),
+                    paint(os.path.relpath(path, root), WHITE, bold=True),
+                    paint("  \u00b7 server: xzagent", GRAY)))
+            else:
+                print("%s%s%s%s%s" % (
+                    head, paint(" MCP config emptied", WHITE),
+                    paint(" \u00b7 ", GRAY), paint(client, CYAN),
+                    paint(" \u00b7 no servers left, file removed", GRAY)))
+        else:
+            if path:
+                print("MCP config %s: %s -> %s" % (verb, client,
+                                                    os.path.relpath(path, root)))
+            else:
+                print("MCP config %s: %s (no servers left, file removed)"
+                      % (verb, client))
+    if not remove:
+        if color_enabled():
+            print("%s%s%s" % (
+                paint("\u21b3 ", GRAY),
+                paint("Claude Code: open this project and approve the tools "
+                      "once (/mcp to check). Cursor: one restart.", GRAY),
+                paint("\n\u21b3 ", GRAY) +
+                paint("Commit the config: any agent opening the project "
+                      "gets the tools with zero setup.", GRAY)))
+        else:
+            print("Claude Code: open this project and approve the tools "
+                  "once (/mcp to check). Cursor: one restart.")
+            print("Commit the config: any agent opening the project gets "
+                  "the tools with zero setup.")
+    return 0
+
+
 def build_parser():
     p = argparse.ArgumentParser(
         prog="ctxp",
@@ -451,6 +564,15 @@ def build_parser():
     sp = sub.add_parser("serve", help="Run the MCP stdio server for this project")
     add_root(sp)
     sp.set_defaults(func=cmd_serve)
+
+    sp = sub.add_parser("setup", help="Write MCP client configs into the project (Claude Code, Cursor): agents find the tools with zero setup")
+    add_root(sp)
+    sp.add_argument("--client", action="append",
+                    choices=sorted(MCP_CLIENT_FILES) + ["generic"],
+                    help="Which client to configure (default: claude + cursor; repeatable)")
+    sp.add_argument("--remove", action="store_true",
+                    help="Remove the xzagent server from the configs instead")
+    sp.set_defaults(func=cmd_setup)
 
     sp = sub.add_parser(
         "update",
