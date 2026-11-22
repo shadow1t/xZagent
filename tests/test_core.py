@@ -133,6 +133,32 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("Order", html)
         self.assertIn("<svg", html)
 
+    def test_schema_html_multi_database_chrome(self):
+        # two databases in one project: the HTML must be data-sealed,
+        # carry the per-database legend, and inject every source name
+        from xzagent.schema import schema_html
+        rows = [
+            {"name": "users", "source": "app.db",
+             "columns": ["id", "name"], "fks": []},
+            {"name": "posts", "source": "app.db",
+             "columns": ["id", "user_id"],
+             "fks": [{"column": "user_id", "ref_table": "users"}]},
+            {"name": "customers", "source": "shop.sqlite",
+             "columns": ["id", "title"], "fks": []},
+            {"name": "orders", "source": "shop.sqlite",
+             "columns": ["id", "customer_id", "author_id"],
+             "fks": [{"column": "customer_id", "ref_table": "customers"},
+                     {"column": "author_id", "ref_table": "users"}]},
+        ]
+        html = schema_html(rows)
+        self.assertNotIn("__DATA__", html)
+        self.assertIn('id="legend"', html)
+        self.assertIn("app.db", html)
+        self.assertIn("shop.sqlite", html)
+        self.assertIn("across databases", html)  # cross-db fk notice
+        # HTML-escaping helper ships in the template (names are injected raw)
+        self.assertIn("function esc(", html)
+
     def test_postgres_rows_to_tables(self):
         from xzagent.schema import rows_to_tables
         cols = [("users", "id", "integer"), ("users", "company_id", "integer"), ("companies", "id", "integer")]

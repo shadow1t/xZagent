@@ -37,6 +37,10 @@ ctxp pack [ROOT] "task" -o context.md   # markdown context pack for an LLM
 ctxp graph [ROOT] SYMBOL          # definitions/callers/callees of a symbol
 ctxp graph [ROOT] --path FILE     # imports + calls linked to a file
 ctxp schema [ROOT] [--pg DSN]     # DB schema (tables, columns, FKs)
+ctxp schema [ROOT] --html s.html # same schema as an interactive HTML map
+                                  #   (3D network + ER cards; one color per
+                                  #   database, legend chips hide/show a
+                                  #   whole DB, dashed amber = cross-DB fk)
 ctxp serve [ROOT]                 # MCP server (stdio) for AI apps
 ctxp update [SRC]                 # update the CLI itself (see below)
 ```

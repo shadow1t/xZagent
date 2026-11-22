@@ -681,7 +681,8 @@ def build_parser():
     sp = sub.add_parser("schema", help="Show DB schema (tables, columns, foreign keys) from .sql files and SQLite DBs")
     add_root(sp)
     sp.add_argument("-o", "--output", help="Write the schema to a file instead of stdout")
-    sp.add_argument("--html", help="Write an interactive HTML network map of tables/relations")
+    sp.add_argument("--html", metavar="FILE",
+                    help="Write an interactive HTML map: 3D network + ER cards, one color per database, legend chips show/hide a whole DB")
     sp.add_argument("--pg", metavar="DSN", help="Fetch schema from a live PostgreSQL server, e.g. postgresql://user:pass@localhost:5432/dbname")
     sp.set_defaults(func=cmd_schema)
 
