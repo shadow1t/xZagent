@@ -188,7 +188,7 @@ def selfupdate(path_arg=None, no_pull=False, progress=None):
             return 1
 
     if progress is not None:
-        progress.update(0, 0, "installing via pip")
+        progress(0, 0, "installing via pip")
     if _needs_handoff():
         # Windows locks the running ctxp.exe: spawn a fresh interpreter,
         # exit now, and let it reinstall + report once we are gone.

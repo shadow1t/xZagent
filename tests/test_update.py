@@ -140,6 +140,22 @@ class TestSelfupdatePosix(_TmpCfg):
     @mock.patch("xzagent.selfupdate._run", _fake_run(0, "ok"))
     @mock.patch("xzagent.selfupdate._needs_handoff", return_value=False)
     @_fake_installed("9.9.9")
+    def test_progress_cb_gets_phase_notes(self, _v, _h):
+        """progress is progress(done, total, note) — same signature the
+        indexer uses; cmd_update passes Progress.update straight in."""
+        self._chdir_tmp()
+        notes = []
+
+        def cb(done, total, note):
+            notes.append((done, total, note))
+
+        rc = run_selfupdate(progress=cb)
+        self.assertEqual(rc, 0)
+        self.assertIn("installing via pip", [n[2] for n in notes])
+
+    @mock.patch("xzagent.selfupdate._run", _fake_run(0, "ok"))
+    @mock.patch("xzagent.selfupdate._needs_handoff", return_value=False)
+    @_fake_installed("9.9.9")
     def test_posix_path_mode_pulls_then_installs(self, _v, _h):
         root = os.path.join(self.tmp.name, "clone")
         os.makedirs(os.path.join(root, ".git"))
