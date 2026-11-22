@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/shadow1t/xZagent?style=social)](https://github.com/shadow1t/xZagent/stargazers)
 
-[Features](#-features) · [Install](#-install) · [Quickstart](#-quickstart) · [MCP setup](#-plug-it-into-your-ai-tools-mcp) · [How it works](#-how-it-works) · [Full docs](docs/USAGE.md)
+[Features](#features) · [Install](#install) · [Quickstart](#quickstart) · [MCP setup](#plug-it-into-your-ai-tools-mcp) · [How it works](#how-it-works) · [Full docs](docs/USAGE.md)
 
 <img src="docs/assets/demo.svg" width="840" alt="ctxp CLI demo on the Flask codebase"/>
 
@@ -58,7 +58,7 @@ xZagent fixes the part that comes before the coding. It indexes the project offl
 
 The index lives at `.xzagent/index.db` and refreshes automatically when files change. No server, no daemon, no build step.
 
-## ✨ Features
+## Features
 
 - 🔌 **Works with Claude Code, Cursor, Windsurf and any MCP client** via a stdio MCP server exposing 9 tools (`repo_map`, `find`, `find_files`, `recent_files`, `file_outline`, `call_graph`, `neighbors`, `context_pack`, `db_schema`)
 - 🎯 **Smart targeting filters** so the agent works on `api_v2*` instead of every API file across versions, drops test-file hijackers with `--no-tests`, restricts ranking to real code with `--only-ext .py`, or to whole areas with `--only-dirs api,ui`
