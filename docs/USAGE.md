@@ -19,7 +19,11 @@ files change or when the tool code changes.
 
 ## CLI commands
 
-All commands take an optional project root (defaults to the current directory):
+All commands take an optional project root (defaults to the current directory).
+Positionals are forgiving: run inside the project and `ctxp find "tmp_*"`,
+`ctxp ask "fix login"`, `ctxp graph login` all do the obvious thing; a
+swapped `ctxp find "tmp_*" .` also works, and a bad root is a one-line
+error, never a traceback.
 
 ```bash
 ctxp index [ROOT]                 # build/refresh the index
@@ -80,6 +84,7 @@ Globs match the basename AND the full relative path (case-insensitive).
 
 ```bash
 ctxp find . "api_v2*"                 # files whose name starts with api_v2
+ctxp find "tmp_*"                     # inside the project: root can be omitted
 ctxp find . "*_v2"                    # files whose name ends with _v2
 ctxp find . "*Dialog*.tsx"            # dialog components
 ctxp find . "api_v2*, *Dialog*"       # multiple patterns, comma-separated

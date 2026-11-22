@@ -25,6 +25,27 @@ def _split_skips(value):
     return out
 
 
+def _justify_root_and_main(args, main_attr):
+    """Forgiving positional order: `ctxp find "tmp_*"` inside a project.
+
+    ROOT is a positional, so a lone pattern/query/symbol naturally lands
+    in it. If the main argument is missing and ROOT is not a directory,
+    they obviously swapped: run against the current directory. If both
+    are given and only the main one is a directory, they were typed the
+    other way round; swap them. Anything else reaches _open_db, which
+    rejects it with a one-line error instead of a traceback.
+    """
+    main = getattr(args, main_attr, None)
+    root = getattr(args, "root", None)
+    if main is None and root and root != "." and not os.path.isdir(root):
+        setattr(args, main_attr, root)
+        args.root = "."
+    elif (main is not None and root and root != "."
+          and not os.path.isdir(root) and os.path.isdir(main)):
+        setattr(args, main_attr, root)
+        args.root = main
+
+
 def _open_db(args):
     """Open the index, showing live progress whenever a (re)build is needed.
 
@@ -34,6 +55,11 @@ def _open_db(args):
     silent multi-second stall. Piped/Non-TTY sessions stay byte-identical.
     """
     root = os.path.abspath(args.root)
+    if not os.path.isdir(root):
+        raise SystemExit(
+            "error: %s is not a directory\n"
+            "  tip: run inside the project, or pass its folder first"
+            % args.root)
     index_all = getattr(args, "index_all", None)
     default_skips = getattr(args, "default_skips", None)
     if index_all and default_skips:
@@ -98,6 +124,7 @@ def cmd_map(args):
 
 
 def cmd_ask(args):
+    _justify_root_and_main(args, "query")
     root, db, con = _open_db(args)
     top = args.top or 0
     ranked = rank_files(
@@ -148,6 +175,7 @@ def cmd_ask(args):
 
 
 def cmd_find(args):
+    _justify_root_and_main(args, "pattern")
     root, db, con = _open_db(args)
     recent = bool(getattr(args, "recent", False))
     common = {
@@ -216,6 +244,7 @@ def cmd_find(args):
 
 
 def cmd_pack(args):
+    _justify_root_and_main(args, "query")
     root, db, con = _open_db(args)
     text = build_pack(con, root, args.query, top_k=args.top)
     if args.output:
@@ -235,6 +264,7 @@ def cmd_pack(args):
 
 
 def cmd_graph(args):
+    _justify_root_and_main(args, "symbol")
     root, db, con = _open_db(args)
     if args.symbol:
         print(json.dumps(call_graph(con, args.symbol), indent=2))
@@ -348,9 +378,9 @@ def build_parser():
     sp.add_argument("--full", action="store_true", help="Show every file with no per-directory cap")
     sp.set_defaults(func=cmd_map)
 
-    sp = sub.add_parser("ask", help="Rank files relevant to a task")
-    add_root(sp)
+    sp = sub.add_parser("ask", help="Rank files relevant to a task (root optional: ctxp ask \"task\" inside the project)")
     sp.add_argument("query")
+    add_root(sp)
     sp.add_argument("--top", type=int, default=10, help="Max results (0 = all matches)")
     sp.add_argument("--pattern", metavar="GLOB", help="Only rank files matching this glob (e.g. api_v2* or *Dialog*.tsx)")
     sp.add_argument("--lang", help="Only these languages, comma-separated (e.g. python,typescript)")
@@ -385,8 +415,8 @@ def build_parser():
     sp.set_defaults(func=cmd_find)
 
     sp = sub.add_parser("pack", help="Write a full context pack (context.md) for a task")
-    add_root(sp)
     sp.add_argument("query")
+    add_root(sp)
     sp.add_argument("--top", type=int, default=8)
     sp.add_argument("-o", "--output", default=None)
     sp.set_defaults(func=cmd_pack)
