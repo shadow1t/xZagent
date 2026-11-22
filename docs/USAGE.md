@@ -397,8 +397,10 @@ What it does:
    every other long ctxp phase), then prints the result. One command,
    nothing to uninstall by hand.
 
-The heavy step is silent unless it fails: then you get the last pip/git
-lines and `ctxp update` to retry after fixing.
+Concurrent `ctxp update` runs cannot race each other: the first one takes
+an exclusive lock (`~/.xzagent/update.lock`, stale after 10 minutes) and
+any other stands down with `✔ an update is already in progress · letting
+it finish`.
 
 ## Troubleshooting
 

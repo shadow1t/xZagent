@@ -338,3 +338,64 @@ class TestHandoffOverrideAndLabels(_TmpCfg):
         self.assertIn('dynamic = ["version"]', pp)
         self.assertIn('xzagent.__version__', pp)
         self.assertNotIn('version = "0.', pp)
+
+class TestUpdateLock(_TmpCfg):
+    """Two ctxp updates racing each other must not double-install."""
+
+    def test_lock_is_exclusive_then_released(self):
+        from xzagent.selfupdate import (_acquire_update_lock,
+                                        _release_update_lock)
+        self.assertTrue(_acquire_update_lock())
+        self.assertFalse(_acquire_update_lock())   # a second updater stands down
+        _release_update_lock()
+        self.assertTrue(_acquire_update_lock())    # and can run afterwards
+
+    def test_release_without_lock_is_harmless(self):
+        from xzagent.selfupdate import _release_update_lock
+        _release_update_lock()  # no exception
+
+    def test_stale_lock_is_taken_over(self):
+        import time as _t
+        from xzagent.selfupdate import (_acquire_update_lock,
+                                        _release_update_lock,
+                                        _update_lock_path)
+        self.assertTrue(_acquire_update_lock())
+        old = _t.time() - 700                    # crashed updater, 11 min ago
+        os.utime(_update_lock_path(), (old, old))
+        self.assertTrue(_acquire_update_lock())  # takeover, not a deadlock
+        _release_update_lock()
+
+    @mock.patch("xzagent.selfupdate._needs_handoff", return_value=False)
+    def test_second_update_is_a_noop(self, _h):
+        """While one updater holds the lock, another prints and exits 0."""
+        from xzagent.selfupdate import (_acquire_update_lock,
+                                        _release_update_lock)
+        self._chdir_tmp()
+        self.assertTrue(_acquire_update_lock())
+        self.addCleanup(_release_update_lock)
+        self.patched = mock.patch("xzagent.selfupdate._run", _fake_run(0, "ok"))
+        self.patched.start()
+        self.addCleanup(self.patched.stop)
+        rc, out = self._run_plain(["update"])
+        self.assertEqual(rc, 0)                      # no failure, just stood down
+        self.assertIn("already in progress", out)
+
+    def test_child_finish_honors_the_lock(self):
+        """A second spawned child must stand down while the lock is held."""
+        from xzagent.selfupdate import (_acquire_update_lock,
+                                        _release_update_lock)
+        self.assertTrue(_acquire_update_lock())
+        self.addCleanup(_release_update_lock)
+        calls = []
+
+        def _spy(cmd, note=None, progress=None):
+            calls.append(cmd)
+            return 0, "ok"
+
+        with mock.patch("xzagent.selfupdate._run", _spy):
+            out = io.StringIO()
+            with redirect_stdout(out):
+                rc = child_finish("/some/spec", "999999999")
+        self.assertEqual(rc, 0)
+        self.assertEqual(calls, [])            # pip never ran: lock was held
+        self.assertIn("already in progress", out.getvalue())

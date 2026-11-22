@@ -180,6 +180,62 @@ def _pull_latest(value, progress=None):
     return rc == 0, out
 
 
+def _update_lock_path():
+    return os.path.join(config_dir(), "update.lock")
+
+
+def _acquire_update_lock(max_age=600):
+    """One updater at a time.
+
+    Two concurrent `ctxp update` runs (double-entered command, editor
+    terminal racing a scheduled one) would point two pip processes at
+    the same install dir at once. The first updater takes an exclusive
+    lock; the second stands down. A lock older than max_age seconds is
+    stale (crashed updater) and is taken over.
+    """
+    def _try():
+        fd = os.open(_update_lock_path(),
+                     os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(str(os.getpid()))
+        return True
+    try:
+        os.makedirs(config_dir(), exist_ok=True)
+        return _try()
+    except FileExistsError:
+        try:
+            age = time.time() - os.stat(_update_lock_path()).st_mtime
+        except OSError:
+            return False  # vanished between try and stat: unlucky timing
+        if age > max_age:
+            try:
+                os.unlink(_update_lock_path())
+            except OSError:
+                return False
+            try:
+                return _try()
+            except FileExistsError:
+                return False
+        return False
+
+
+def _release_update_lock():
+    try:
+        os.unlink(_update_lock_path())
+    except OSError:
+        pass
+
+
+def _already_running_line():
+    if color_enabled():
+        return "%s%s%s%s" % (paint("\u2714", GREEN),
+                             paint(" an update is already in progress",
+                                   WHITE),
+                             paint(" \u00b7 ", GRAY),
+                             paint("letting it finish", GRAY))
+    return "Update already in progress (another ctxp update owns it); nothing to do"
+
+
 def selfupdate(path_arg=None, no_pull=False, progress=None):
     """Entry point of `ctxp update`. Returns a process exit code."""
     kind, value = resolve_source(path_arg)
@@ -222,7 +278,13 @@ def selfupdate(path_arg=None, no_pull=False, progress=None):
 
     if progress is not None:
         progress(0, 0, "installing via pip")
-    rc, out = _run([sys.executable, "-m", "pip", *PIP_ARGS, spec])
+    if not _acquire_update_lock():
+        print(_already_running_line())
+        return 0
+    try:
+        rc, out = _run([sys.executable, "-m", "pip", *PIP_ARGS, spec])
+    finally:
+        _release_update_lock()
     if rc != 0:
         _fail("pip install failed", out)
         return 1
@@ -242,12 +304,17 @@ def child_finish(spec, ppid, label=None):
     # user's console, exactly like every other long ctxp phase
     prog = Progress()
     prog.start()
+    if not _acquire_update_lock():
+        prog.finish()
+        print(_already_running_line())
+        return 0
     try:
         rc, out = _run([sys.executable, "-m", "pip", *PIP_ARGS, spec],
                        note="installing via pip",
                        progress=prog.update if prog.enabled else None)
     finally:
         prog.finish()
+        _release_update_lock()
     if rc != 0:
         _fail("pip install failed", out)
         return 1
