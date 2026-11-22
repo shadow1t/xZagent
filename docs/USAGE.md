@@ -424,7 +424,11 @@ What it does:
    live progress line).
 3. Reinstalls via `pip install --force-reinstall --no-deps --no-cache-dir`
    and reports the version jump: `✔ Updated xzagent 0.2.2 → 0.2.3`.
-4. On Windows the running `ctxp.exe` is file-locked, so the install is
+4. On Windows the running `ctxp.exe` is file-locked, but a running exe
+   CAN be renamed: `ctxp update` renames it aside (ctxp.exe.oldN,
+   swept at the next update) and installs the fresh exe right in place,
+   inside the one visible command. Only if that rename is refused (rare,
+   antivirus meddling) does the older detour kick in: the install is
    handed to a fresh interpreter that waits for the current one to exit,
    reinstalls in the SAME console with a live progress line (exactly like
    every other long ctxp phase), then prints the result. One command,

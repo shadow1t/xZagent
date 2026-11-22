@@ -10,12 +10,17 @@ Replaces the manual developer loop (git pull, pip uninstall, pip install
 
 The remembered source makes plain `ctxp update` work from anywhere.
 
-On Windows the running ctxp.exe is locked by the OS, so pip cannot
-overwrite it while we are alive: the heavy step is handed off to a fresh
-interpreter (python -m xzagent __update-child) that waits for THIS
-process to exit, reinstalls, and prints the result into the same console.
-On every other platform pip runs in-process and the result prints
-immediately. Piped/non-tty sessions stay plain and quiet.
+On Windows the running ctxp.exe is locked by the OS and cannot be
+OVERWRITTEN while we are alive, but a running exe CAN be renamed:
+ctxp update renames the live exe aside (ctxp.exe.oldN), pip installs
+the fresh exe at the original path, and the whole update runs inside
+the one visible command: live spinner, result line, prompt returns
+when it truly finished. Only when the rename fails (rare, AV meddling)
+does it fall back to the older handoff: a detached interpreter
+(python -m xzagent __update-child) waits for THIS process to exit,
+reinstalls, and prints into the same console. Leftover .oldN files
+are swept at the next update. On every other platform pip runs
+in-process from the start. Piped/non-tty sessions stay plain and quiet.
 """
 import json
 import os
@@ -106,6 +111,17 @@ def _run(cmd, note=None, progress=None):
         return p.returncode, (p.stdout or "").strip()
     except OSError as e:
         return 127, str(e)
+
+
+def _is_windows():
+    """True on Windows; XZAGENT_UPDATE_INPLACE=1 simulates it anywhere.
+
+    Lets the Windows in-place rename flow be exercised end to end in
+    demos and tests on POSIX (where os.name never says nt).
+    """
+    if os.environ.get("XZAGENT_UPDATE_INPLACE") == "1":
+        return True
+    return os.name == "nt"
 
 
 def _needs_handoff():
@@ -236,6 +252,85 @@ def _already_running_line():
     return "Update already in progress (another ctxp update owns it); nothing to do"
 
 
+def _entry_exe_candidates():
+    """Likely installed locations of the ctxp console-script exe."""
+    cands = []
+    try:
+        import sysconfig
+        d = sysconfig.get_path("scripts")
+        if d:
+            cands.append(os.path.join(d, "ctxp.exe"))
+    except Exception:
+        pass
+    if sys.prefix:
+        cands.append(os.path.join(sys.prefix, "Scripts", "ctxp.exe"))
+    try:
+        import site
+        if site.USER_BASE and os.name == "nt":
+            cands.append(os.path.join(site.USER_BASE,
+                                      "Python%d%d" % sys.version_info[:2],
+                                      "Scripts", "ctxp.exe"))
+    except Exception:
+        pass
+    out = []
+    for c in cands:
+        if os.path.isfile(c) and c not in out:
+            out.append(c)
+    return out
+
+
+def _retired_exe_dirs():
+    dirs = [os.path.dirname(c) for c in _entry_exe_candidates()]
+    try:
+        import sysconfig
+        d = sysconfig.get_path("scripts")
+        if d and os.path.isdir(d):
+            dirs.append(d)
+    except Exception:
+        pass
+    return [d for d in dict.fromkeys(dirs) if d and os.path.isdir(d)]
+
+
+def _sweep_retired_exes():
+    """Delete leftover ctxp.exe.oldN from previous updates (best effort)."""
+    for d in _retired_exe_dirs():
+        for i in range(4):
+            try:
+                os.unlink(os.path.join(d, "ctxp.exe.old%d" % i))
+            except OSError:
+                pass
+
+
+def _retire_running_exe(candidates=None):
+    """Windows in-place self-update: rename the locked exe aside.
+
+    A running exe cannot be overWRITTEN on Windows, but it CAN be
+    renamed. Renaming the live ctxp.exe aside frees the original path
+    while the running launcher keeps executing under its new name,
+    so pip can install the fresh exe in place WITHOUT waiting for the
+    command to exit. That kills the whole handoff dance: no child
+    process printing behind PowerShell's back, no phantom updates after
+    the prompt returns, no Enter press needed to see the input line.
+
+    Returns True when the rename landed (caller should update in
+    place); False means fall back to the detached-child handoff.
+    """
+    cands = candidates if candidates is not None else _entry_exe_candidates()
+    for exe in cands:
+        if not os.path.isfile(exe):
+            continue
+        for i in range(4):
+            old = os.path.join(os.path.dirname(exe), "ctxp.exe.old%d" % i)
+            if os.path.isfile(old):
+                continue
+            try:
+                os.rename(exe, old)
+                return True
+            except OSError:
+                return False  # AV/permission meddling: handoff fallback
+    return False
+
+
 def selfupdate(path_arg=None, no_pull=False, progress=None):
     """Entry point of `ctxp update`. Returns a process exit code."""
     kind, value = resolve_source(path_arg)
@@ -249,8 +344,15 @@ def selfupdate(path_arg=None, no_pull=False, progress=None):
             _fail("git pull failed in %s" % value, out)
             return 1
 
-    if _needs_handoff():
-        # Windows locks the running ctxp.exe: spawn a fresh interpreter,
+    in_place = not _needs_handoff()
+    if not in_place and _is_windows():
+        # the running exe is locked, but it can be RENAMED: retire it
+        # aside and reinstall in front of the user, one clean command
+        _sweep_retired_exes()
+        in_place = _retire_running_exe()
+    if not in_place:
+        # Windows locks the running ctxp.exe (rename could not free it):
+        # spawn a fresh interpreter,
         # exit now, and let it reinstall + report once we are gone. The
         # child keeps the console alive with its own live progress line.
         child = [sys.executable, "-m", "xzagent", "__update-child", spec,

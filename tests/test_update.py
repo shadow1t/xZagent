@@ -399,3 +399,95 @@ class TestUpdateLock(_TmpCfg):
         self.assertEqual(rc, 0)
         self.assertEqual(calls, [])            # pip never ran: lock was held
         self.assertIn("already in progress", out.getvalue())
+
+
+class TestWindowsInPlaceUpdate(_TmpCfg):
+    """The rename-asides trick: how ctxp update stays one clean command."""
+
+    def test_retire_renames_the_live_exe_aside(self):
+        from xzagent.selfupdate import _retire_running_exe
+        scripts = os.path.join(self.tmp.name, "Scripts")
+        os.makedirs(scripts, exist_ok=True)
+        exe = os.path.join(scripts, "ctxp.exe")
+        with open(exe, "wb") as fh:
+            fh.write(b"MZ launcher")
+
+        class raised(Exception):
+            pass
+
+        real_rename = os.rename
+
+        def _rename(src, dst):
+            # prove the real call is a pure rename (locked-exe style)
+            assert src == exe
+            assert dst.endswith(".old0")
+            return real_rename(src, dst)
+
+        import xzagent.selfupdate as su
+        with mock.patch("os.rename", side_effect=_rename):
+            self.assertTrue(_retire_running_exe(candidates=[exe]))
+        self.assertFalse(os.path.isfile(exe))
+        self.assertTrue(os.path.isfile(exe + ".old0"))
+        # second retire (fresh exe in place, .old0 taken) uses .old1
+        with open(exe, "wb") as fh:
+            fh.write(b"MZ fresh")
+        self.assertTrue(_retire_running_exe(candidates=[exe]))
+        self.assertTrue(os.path.isfile(exe + ".old1"))
+
+    def test_retire_fails_soft_when_rename_denied(self):
+        from xzagent.selfupdate import _retire_running_exe
+        scripts = os.path.join(self.tmp.name, "Scripts")
+        os.makedirs(scripts, exist_ok=True)
+        exe = os.path.join(scripts, "ctxp.exe")
+        with open(exe, "wb") as fh:
+            fh.write(b"MZ")
+
+        def _denied(src, dst):
+            raise OSError(13, "Permission denied")
+
+        with mock.patch("os.rename", side_effect=_denied):
+            self.assertFalse(_retire_running_exe(candidates=[exe]))
+        self.assertTrue(os.path.isfile(exe))  # untouched
+
+    def test_sweep_deletes_only_retired_files(self):
+        from xzagent.selfupdate import _sweep_retired_exes, _retired_exe_dirs
+        scripts = os.path.join(self.tmp.name, "Scripts")
+        os.makedirs(scripts, exist_ok=True)
+        for name in ("ctxp.exe.old0", "ctxp.exe.old1",
+                     "unrelated.exe.old0"):
+            with open(os.path.join(scripts, name), "wb") as fh:
+                fh.write(b"x")
+        with mock.patch("xzagent.selfupdate._entry_exe_candidates",
+                        return_value=[os.path.join(scripts, "ctxp.exe")]):
+            _sweep_retired_exes()
+        self.assertFalse(os.path.isfile(os.path.join(scripts, "ctxp.exe.old0")))
+        self.assertFalse(os.path.isfile(os.path.join(scripts, "ctxp.exe.old1")))
+        self.assertTrue(os.path.isfile(os.path.join(scripts, "unrelated.exe.old0")))
+
+    def test_windows_flow_goes_in_place_when_rename_lands(self):
+        """Rename success must beat the handoff: one process, one prompt."""
+        from xzagent import selfupdate as su
+        ran = []
+
+        def _fake_run(cmd, note=None, progress=None):
+            ran.append(cmd)
+            return 0, "Successfully reinstalled xzagent"
+
+        with mock.patch("xzagent.selfupdate._needs_handoff", return_value=True), \
+             mock.patch("xzagent.selfupdate._is_windows", return_value=True), \
+             mock.patch("xzagent.selfupdate._retire_running_exe", return_value=True), \
+             mock.patch("xzagent.selfupdate._run", side_effect=_fake_run), \
+             mock.patch("xzagent.selfupdate._installed_version",
+                        return_value="9.9.9"), \
+             mock.patch("xzagent.selfupdate._pull_latest",
+                        return_value=(True, "")):
+            out = io.StringIO()
+            with redirect_stdout(out):
+                rc = su.selfupdate(str(self.tmp.name))
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(ran), 1)                  # pip ran in-process
+        self.assertTrue(ran[0][-1].endswith(self.tmp.name))
+        self.assertNotIn("Update in progress", out.getvalue())  # no handoff
+        self.assertIn("Updated xzagent", out.getvalue())
+        self.assertIn("9.9.9", out.getvalue())
+        self.assertFalse(os.path.exists(su._update_lock_path()))  # released
