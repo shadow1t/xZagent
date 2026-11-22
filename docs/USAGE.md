@@ -37,6 +37,10 @@ ctxp pack [ROOT] "task" -o context.md   # markdown context pack for an LLM
 ctxp graph [ROOT] SYMBOL          # definitions/callers/callees of a symbol
 ctxp graph [ROOT] --path FILE     # imports + calls linked to a file
 ctxp schema [ROOT] [--pg DSN]     # DB schema (tables, columns, FKs)
+ctxp schema [ROOT] --only db.sqlite3 --html s.html
+                                  # same, but ONLY sources whose path
+                                  #   contains the substring (repeatable);
+                                  #   --exclude SRC drops instead
 ctxp schema [ROOT] --html s.html # same schema as an interactive HTML map
                                   #   (3D network + ER cards; one color per
                                   #   database, legend chips hide/show a

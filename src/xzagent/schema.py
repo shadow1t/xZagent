@@ -112,8 +112,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <title>DB schema explorer</title>
 <style>
 *{box-sizing:border-box}
-body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 600px at 70% -10%,#16233f 0%,#0b1220 55%);color:#e2e8f0;margin:0;overflow:hidden}
-#top{display:flex;gap:10px;align-items:center;padding:10px 16px;background:linear-gradient(180deg,#131f38,#111c33);border-bottom:1px solid #1f2d4d;font-size:14px;box-shadow:0 2px 12px #0008;flex-wrap:wrap}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 600px at 70% -10%,#16233f 0%,#0b1220 55%);color:#e2e8f0;margin:0;overflow:hidden;display:flex;flex-direction:column;height:100vh}
+#top{flex:none;display:flex;gap:10px;align-items:center;padding:10px 16px;background:linear-gradient(180deg,#131f38,#111c33);border-bottom:1px solid #1f2d4d;font-size:14px;box-shadow:0 2px 12px #0008;flex-wrap:wrap}
 #top b{color:#93c5fd;font-size:15px;letter-spacing:.3px}
 #top input{background:#0b1220;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:7px 12px;width:290px;outline:none;transition:border .15s}
 #top input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px #3b82f622}
@@ -123,7 +123,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gr
 #top button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-size:13px;transition:all .15s}
 #top button:hover{background:#3b82f6}
 #top button.off{background:#1e293b;color:#94a3b8}
-#legend{display:flex;gap:8px;align-items:center;padding:8px 16px;background:rgba(13,21,38,.9);border-bottom:1px solid #1f2d4d;flex-wrap:wrap;font-size:12px;min-height:34px}
+#legend{flex:none;display:flex;gap:8px;align-items:center;padding:8px 16px;background:rgba(13,21,38,.9);border-bottom:1px solid #1f2d4d;font-size:12px;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
 .lg{display:flex;align-items:center;gap:6px;background:#111c33;border:1px solid #1f2d4d;border-radius:999px;padding:4px 11px;cursor:pointer;transition:all .15s;color:#cbd5e1;user-select:none}
 .lg:hover{border-color:#3b82f6}
 .lg.off{opacity:.35;text-decoration:line-through}
@@ -140,7 +140,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gr
 .card .cols{padding:6px 12px;font-size:11px;color:#94a3b8;max-height:150px;overflow-y:auto}
 .card .cols div{padding:2px 0}
 .card .cols .fk{color:#fbbf24}
-#main{display:flex;height:calc(100vh - 84px)}
+#main{display:flex;flex:1 1 auto;min-height:0}
 #side{width:300px;min-width:300px;overflow-y:auto;background:#101a30;border-right:1px solid #1f2d4d;padding:8px;transition:margin .2s}
 #side.closed{margin-left:-300px}
 #sideToggle{background:#1e293b;color:#94a3b8}
@@ -160,7 +160,7 @@ details.src summary .dot{width:9px;height:9px;border-radius:50%;flex:none}
 .titem.sel{background:#2563eb;color:#fff}
 .titem .nfk{color:#64748b;font-size:11px}
 .titem.sel .nfk{color:#bfdbfe}
-#content{flex:1;overflow:auto;padding:18px;position:relative}
+#content{flex:1;min-width:0;overflow:auto;padding:18px;position:relative}
 #graph{width:100%;height:440px;background:radial-gradient(600px 300px at 50% 40%,#12203a 0%,#0d1526 70%);border:1px solid #1f2d4d;border-radius:12px;box-shadow:inset 0 0 40px #0006}
 .node circle{fill:var(--sc,#2563eb);stroke:#93c5fd;stroke-width:1.5;cursor:pointer;transition:r .1s}
 .node.sel circle{fill:#f97316;stroke:#fdba74;stroke-width:2.5}
@@ -211,6 +211,7 @@ let selectedName = null;
 let showAllLabels = false;
 let disabledSources = new Set();
 function esc(s){return String(s).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function srcLabel(s){const i=Math.max(s.lastIndexOf('/'),s.lastIndexOf('\\\\'));return i>=0?s.slice(i+1):s;}
 // one stable color per database (source)
 const PALETTE=['#3b82f6','#22c55e','#a855f7','#f97316','#06b6d4','#eab308','#ec4899','#14b8a6'];
 const sources=[]; data.forEach(function(t){ if(sources.indexOf(t.source)<0) sources.push(t.source); });
@@ -243,9 +244,10 @@ function drawGraph(){
   const W=svg.clientWidth||800, H=svg.clientHeight||420;
   svg.setAttribute('viewBox',(-W/2/zoom+pan.x)+' '+(-H/2/zoom+pan.y)+' '+(W/zoom)+' '+(H/zoom));
   const ps=nodes.map(function(n){return {n:n,p:proj(n)};});
+  const pName={}; ps.forEach(function(o){pName[o.n.name]=o.p;});
   links.forEach(function(l){
     if(disabledSources.has(l.s.source)||disabledSources.has(l.t.source)) return;
-    const a=ps.find(function(o){return o.n===l.s;}).p, b=ps.find(function(o){return o.n===l.t;}).p;
+    const a=pName[l.s.name], b=pName[l.t.name];
     const e=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,'class':(l.cross?'edge cross':'edge')});
     e.style.opacity=0.08+0.5*((a.z+b.z)/2+1)/2;
     if(selectedName && (l.s.name===selectedName||l.t.name===selectedName)) e.classList.add('hot');
@@ -270,6 +272,8 @@ function drawGraph(){
   });
 }
 let drag=null, tool='rotate';
+let rafPending=false;
+function scheduleDraw(){ if(rafPending) return; rafPending=true; requestAnimationFrame(function(){ rafPending=false; drawGraph(); }); }
 svg.onmousedown=function(e){
   const doPan = tool==='pan' || e.shiftKey || e.button===1;
   svg.classList.add('grabbing');
@@ -278,7 +282,7 @@ svg.onmousedown=function(e){
 window.onmousemove=function(e){if(drag){
   if(drag.pan){ pan.x=drag.px+(e.clientX-drag.x)/zoom; pan.y=drag.py+(e.clientY-drag.y)/zoom; }
   else { rot.ry=drag.ry+(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; }
-  drawGraph();
+  scheduleDraw();
 }};
 window.onmouseup=function(){drag=null; svg.classList.remove('grabbing');};
 document.getElementById('hand').onclick=function(e){
@@ -288,7 +292,7 @@ document.getElementById('hand').onclick=function(e){
   e.target.textContent = tool==='pan' ? '✋' : '🔄';
   e.target.title = tool==='pan' ? 'pan mode (click to rotate)' : 'hand tool: drag to pan planet';
 };
-svg.onwheel=function(e){e.preventDefault();zoom=Math.min(20,Math.max(.4,zoom*(e.deltaY<0?1.2:1/1.2)));drawGraph();};
+svg.onwheel=function(e){e.preventDefault();zoom=Math.min(20,Math.max(.4,zoom*(e.deltaY<0?1.2:1/1.2)));scheduleDraw();};
 document.getElementById('zIn').onclick=function(){zoom=Math.min(20,zoom*1.5);drawGraph();};
 document.getElementById('zOut').onclick=function(){zoom=Math.max(.4,zoom/1.5);drawGraph();};
 document.getElementById('zReset').onclick=function(){zoom=1;pan={x:0,y:0};rot={rx:-0.4,ry:0.6};resetGraph();drawGraph();};
@@ -309,7 +313,8 @@ function buildSide(q){
     const det=document.createElement('details'); det.className='src'; det.open=true;
     const sum=document.createElement('summary');
     const total=data.filter(function(t){return t.source===s;}).length;
-    sum.innerHTML='<span class="dot" style="background:'+(sColor[s])+'"></span>'+esc(s)+' <span class="cnt">'+ts.length+(ts.length!==total?' / '+total:'')+' tables</span>';
+    sum.innerHTML='<span class="dot" style="background:'+(sColor[s])+'"></span>'+esc(srcLabel(s))+' <span class="cnt">'+ts.length+(ts.length!==total?' / '+total:'')+' tables</span>';
+    sum.title='source: '+s;
     det.appendChild(sum);
     ts.forEach(function(t){
       const d=document.createElement('div'); d.className='titem'; d.dataset.name=t.name;
@@ -359,8 +364,8 @@ function buildLegend(){
   sources.forEach(function(s){
     const n=data.filter(function(t){return t.source===s;}).length;
     const d=document.createElement('div'); d.className='lg'; d.dataset.s=s;
-    d.innerHTML='<span class="dot" style="background:'+sColor[s]+';color:'+sColor[s]+'"></span>'+esc(s)+' · <span class="n">'+n+' tables</span>';
-    d.title='click: show or hide this database';
+    d.innerHTML='<span class="dot" style="background:'+sColor[s]+';color:'+sColor[s]+'"></span>'+esc(srcLabel(s))+' · <span class="n">'+n+' tables</span>';
+    d.title='source: '+s+' · click: show or hide this database';
     d.onclick=function(){
       if(disabledSources.has(s)) disabledSources.delete(s); else disabledSources.add(s);
       d.classList.toggle('off',disabledSources.has(s));
@@ -373,6 +378,12 @@ function buildLegend(){
     const c=document.createElement('div'); c.className='chip';
     c.innerHTML='<svg width="26" height="8" style="vertical-align:middle"><line x1="1" y1="4" x2="25" y2="4" stroke="#fbbf24" stroke-width="2" stroke-dasharray="5 4"/></svg> dashed amber = fk across databases';
     lg.appendChild(c);
+  }
+  if(data.length>800){
+    const h=document.createElement('div'); h.className='chip';
+    h.style.color='#fbbf24';
+    h.textContent='⚠ huge corpus ('+data.length+' tables) · tip: ctxp schema --only <source> slices one database';
+    lg.appendChild(h);
   }
   document.getElementById('cnt').innerHTML=data.length+' tables · '+links.length+' relations · <b>'+sources.length+'</b> db'+(sources.length>1?'s':'');
 }
@@ -387,7 +398,7 @@ function buildCards(q){
       return '<div class="'+(fk?'fk':'')+'">'+esc(col)+(fk?' → '+esc(fk.ref_table):'')+'</div>';
     }).join('');
     if(t.columns.length>12) colsHtml+='<div>… +'+(t.columns.length-12)+' more</div>';
-    d.innerHTML='<h3>'+esc(t.name)+'</h3><div class="cardsrc"><span class="dot" style="background:'+sColor[t.source]+'"></span>'+esc(t.source)+'</div><div class="cols">'+colsHtml+'</div>';
+    d.innerHTML='<h3>'+esc(t.name)+'</h3><div class="cardsrc" title="source: '+esc(t.source)+'"><span class="dot" style="background:'+sColor[t.source]+'"></span>'+esc(srcLabel(t.source))+'</div><div class="cols">'+colsHtml+'</div>';
     d.onclick=function(){select(t.name);}; c.appendChild(d);
   });
 }
@@ -427,6 +438,21 @@ window.onresize=function(){drawGraph();};
 </script></body></html>
 """
 
+
+
+def filter_schema_rows(rows, only, exclude):
+    """Filter table rows by SOURCE substring, so one run can target a
+    single database. --only keeps sources containing any given substring,
+    --exclude drops them. Both take lists (repeatable flags); both must
+    be None/empty to keep everything."""
+    def keep(r):
+        src = r["source"]
+        if only and not any(p in src for p in only):
+            return False
+        if exclude and any(p in src for p in exclude):
+            return False
+        return True
+    return [r for r in rows if keep(r)]
 
 
 def schema_html(rows):

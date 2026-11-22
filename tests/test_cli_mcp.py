@@ -29,6 +29,36 @@ class TestCli(unittest.TestCase):
             rc = main(argv)
         return rc, buf.getvalue()
 
+    def test_schema_cli_only_exclude_filters(self):
+        import sqlite3
+        spec = (("main.sqlite", "alpha_users"), ("other.sqlite", "alien_customers"))
+        for fname, tbl in spec:
+            con = sqlite3.connect(os.path.join(self.root, fname))
+            con.execute("CREATE TABLE %s (id INTEGER PRIMARY KEY, tag TEXT)" % tbl)
+            con.commit(); con.close()
+        self._run(["--db", self.db, "index", self.root])
+        rc, out = self._run(["schema", self.root, "--only", "other.sqlite"])
+        self.assertEqual(rc, 0)
+        self.assertIn("alien_customers", out)
+        self.assertNotIn("alpha_users", out)
+        self.assertNotIn("companies", out)     # db/schema.sql filtered out too
+        rc, out = self._run(["schema", self.root, "--exclude", "other.sqlite",
+                             "--exclude", "migrations"])
+        self.assertEqual(rc, 0)
+        self.assertIn("alpha_users", out)
+        self.assertIn("companies", out)         # schema.sql survives
+        self.assertNotIn("alien_customers", out)
+        # html output honors the filter as well
+        html = os.path.join(self.root, "one.html")
+        rc, out = self._run(["schema", self.root, "--only", "main.sqlite",
+                             "--html", html])
+        self.assertEqual(rc, 0)
+        with open(html, encoding="utf-8") as fh:
+            body = fh.read()
+        self.assertIn("alpha_users", body)
+        self.assertNotIn("alien_customers", body)
+        self.assertNotIn("__DATA__", body)
+
     def test_index_map_ask_pack(self):
         rc, out = self._run(["--db", self.db, "index", self.root])
         self.assertEqual(rc, 0)

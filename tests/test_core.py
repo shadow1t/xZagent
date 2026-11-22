@@ -159,6 +159,24 @@ class TestIndexRankGraph(unittest.TestCase):
         # HTML-escaping helper ships in the template (names are injected raw)
         self.assertIn("function esc(", html)
 
+    def test_schema_rows_filter_only_exclude(self):
+        from xzagent.schema import filter_schema_rows
+        rows = [
+            {"name": "users", "source": "app/db.sqlite3", "columns": ["id"], "fks": []},
+            {"name": "posts", "source": "app/db.sqlite3", "columns": ["id"], "fks": []},
+            {"name": "customers", "source": "data/tenants/company_6.sql", "columns": ["id"], "fks": []},
+            {"name": "Order", "source": "shop/migrations/0001_initial.py", "columns": ["id"], "fks": []},
+        ]
+        only = filter_schema_rows(rows, ["db.sqlite3"], None)
+        self.assertEqual(sorted(r["name"] for r in only), ["posts", "users"])
+        ex = filter_schema_rows(rows, None, ["migrations"])
+        self.assertNotIn("Order", [r["name"] for r in ex])
+        both = filter_schema_rows(rows, ["sqlite3", "tenants"], ["db.sqlite3"])
+        self.assertEqual([r["name"] for r in both], ["customers"])
+        self.assertEqual(filter_schema_rows(rows, None, None), rows)
+        # empty string never filters anything out
+        self.assertEqual(filter_schema_rows(rows, [""], None), rows)
+
     def test_postgres_rows_to_tables(self):
         from xzagent.schema import rows_to_tables
         cols = [("users", "id", "integer"), ("users", "company_id", "integer"), ("companies", "id", "integer")]

@@ -286,7 +286,9 @@ def cmd_graph(args):
 def cmd_schema(args):
     import json as _json
 
-    from .schema import fetch_postgres_schema, format_schema
+    from .schema import fetch_postgres_schema, filter_schema_rows, format_schema
+    rows_filter = lambda rs: filter_schema_rows(
+        rs, getattr(args, "only", None), getattr(args, "exclude", None))
     if getattr(args, "pg", None):
         # live schema fetch can take seconds against a real server
         prog = Progress()
@@ -297,6 +299,7 @@ def cmd_schema(args):
             prog.finish()
         rows = [{"name": n, "source": "postgresql", "columns": t["columns"], "fks": t["fks"]}
                 for n, t in sorted(tables.items())]
+        rows = rows_filter(rows)
         if getattr(args, "html", None):
             from .schema import schema_html
             with open(args.html, "w", encoding="utf-8") as fh:
@@ -311,6 +314,7 @@ def cmd_schema(args):
          "columns": _json.loads(r["columns"]), "fks": _json.loads(r["fks"])}
         for r in con.execute("SELECT name, source, columns, fks FROM db_tables").fetchall()
     ]
+    rows = rows_filter(rows)
     if getattr(args, "html", None):
         from .schema import schema_html
         with open(args.html, "w", encoding="utf-8") as fh:
@@ -684,6 +688,10 @@ def build_parser():
     sp.add_argument("--html", metavar="FILE",
                     help="Write an interactive HTML map: 3D network + ER cards, one color per database, legend chips show/hide a whole DB")
     sp.add_argument("--pg", metavar="DSN", help="Fetch schema from a live PostgreSQL server, e.g. postgresql://user:pass@localhost:5432/dbname")
+    sp.add_argument("--only", metavar="SRC", action="append",
+                    help="Keep only tables whose source path contains this substring (repeatable): --only db.sqlite3 --only tenants/")
+    sp.add_argument("--exclude", metavar="SRC", action="append",
+                    help="Drop tables whose source path contains this substring (repeatable): --exclude migrations")
     sp.set_defaults(func=cmd_schema)
 
     sp = sub.add_parser("serve", help="Run the MCP stdio server for this project")
