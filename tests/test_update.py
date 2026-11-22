@@ -243,3 +243,53 @@ class TestWindowsHandoffAndChild(_TmpCfg):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestRunWithDrivesProgressCallback(_TmpCfg):
+    """Regression: `ctxp update` crashed with AttributeError because _run()
+    called progress.update(...) while progress is the same
+    progress(done, total, note) hook every other phase uses. The pull
+    path only runs when the source is a real git clone, which is why it
+    survived stubbed tests and surfaced on a real Windows machine."""
+
+    def test_run_drives_progress_callback(self):
+        from xzagent.selfupdate import _run
+        notes = []
+
+        def cb(done, total, note):
+            notes.append((done, total, note))
+
+        with mock.patch("xzagent.selfupdate.subprocess.run") as sr:
+            sr.return_value = mock.Mock(returncode=0, stdout="ok")
+            rc, out = _run(["git", "pull"], note="pulling latest changes",
+                           progress=cb)
+        self.assertEqual(rc, 0)
+        self.assertEqual(notes, [(0, 0, "pulling latest changes")])
+
+    def test_real_subprocess_reaches_the_callback(self):
+        """Same bug, but through a REAL spawned process on PATH."""
+        import os
+        import shutil
+        import stat
+        import tempfile
+        binroot = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, binroot, True)
+        script = os.path.join(binroot, "git")
+        with open(script, "w", encoding="utf-8") as fh:
+            import sys
+            fh.write("#!%s\nprint('Already up to date.')\n" % sys.executable)
+        os.chmod(script, 0o755)
+        cur_path = os.environ.get("PATH", "")
+        with mock.patch.dict(os.environ, {"PATH": binroot + os.pathsep
+                                          + cur_path}):
+            from xzagent.selfupdate import _pull_latest
+            notes = []
+
+            def cb(done, total, note):
+                notes.append(note)
+
+            root = os.path.join(self.tmp.name, "aclone")
+            os.makedirs(os.path.join(root, ".git"))
+            ok, out = _pull_latest(root, progress=cb)
+        self.assertTrue(ok)
+        self.assertIn("Already up to date.", out)
+        self.assertEqual(notes, ["pulling latest changes"])

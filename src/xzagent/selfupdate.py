@@ -99,7 +99,7 @@ def _pip_spec(kind, value):
 def _run(cmd, note=None, progress=None):
     """Quietly run a command; returns (returncode, combined output)."""
     if progress is not None and note:
-        progress.update(0, 0, note)
+        progress(0, 0, note)
     try:
         p = subprocess.run(cmd, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT, text=True)
