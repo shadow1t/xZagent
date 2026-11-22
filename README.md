@@ -22,6 +22,9 @@ ctxp map ./my-project                   # print the repo map (every directory sh
 ctxp map ./my-project --per-dir 40     # up to 40 files per directory in the tree
 ctxp map ./my-project --full           # every single file, no capping
 ctxp ask ./my-project "fix login bug"  # rank relevant files
+ctxp find ./my-project "api_v2*"       # find files by name/path glob
+ctxp find ./my-project "*Dialog*.tsx" --symbol Dialog* --recent  # + filters
+ctxp ask ./my-project "billing" --skip-ext .md,.txt --skip-dirs docs  # skip noise
 ctxp pack ./my-project "add dark mode" -o context.md   # full context pack
 ctxp graph ./my-project login           # call graph for a symbol
 ctxp graph ./my-project --path app/auth.py           # neighbors of a file
@@ -30,6 +33,10 @@ ctxp graph ./my-project --path app/auth.py           # neighbors of a file
 ## Scales to large projects
 
 The map never hides a directory: the tree always shows **every folder** and only caps the number of files listed *per directory* (`… (+N more in this dir)`), so a repo with 3000 UI files still renders a complete structural map a human or agent can read. Use `--full` when you want every single file, or `--per-dir N` to tune it.
+
+## Staying focused
+
+Target exactly the files a task needs (`ctxp find "api_v2*"` instead of every API file across versions), skip noise at search time (`--skip-ext .md,.txt`, `--skip-dirs docs,generated`), prefer recent edits (`--recent`), and exclude anything permanently from the index with a `.xzagentignore` file in the project root (gitignore syntax). The indexer also skips obvious noise **by name** out of the box: `tmp_*` probes, `*_bak.*` backups, `*.min.js` bundles, lockfiles, `*.log`, and framework artifact folders like `migrations/` (which still feed `db_schema`). Re-include any default with a `!pattern` rule in `.xzagentignore`.
 
 ## MCP server (for Claude Code / Cursor / Windsurf)
 
@@ -46,7 +53,7 @@ Add to your MCP config (stdio, newline-delimited JSON-RPC):
 }
 ```
 
-Tools exposed: `repo_map`, `find_files`, `file_outline`, `call_graph`, `neighbors`, `context_pack`.
+Tools exposed: `repo_map`, `find`, `find_files`, `recent_files`, `file_outline`, `call_graph`, `neighbors`, `context_pack`, `db_schema`. Full guide: [docs/USAGE.md](docs/USAGE.md).
 
 ## How it works
 

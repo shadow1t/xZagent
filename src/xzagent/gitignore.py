@@ -68,11 +68,15 @@ class GitignoreMatcher:
             child_re = re.compile(body + r"(?:/.*)?$") if dir_only else None
             self.rules.append((base, self_re, child_re, negated, dir_only))
 
-    def is_ignored(self, root, path, is_dir):
+    def _match_rules(self, root, path, is_dir):
+        """Return (ignored, negated_override) using gitignore precedence:
+        the last matching rule wins; a negation (!) clears the ignore and
+        marks a negated_override that defeats built-in default ignores."""
         rel = os.path.relpath(path, root).replace(os.sep, "/")
         if rel == ".":
-            return False
+            return (False, False)
         ignored = False
+        negated_override = False
         for base, self_re, child_re, negated, dir_only in self.rules:
             base_rel = os.path.relpath(base, root).replace(os.sep, "/")
             if base_rel == ".":
@@ -92,4 +96,16 @@ class GitignoreMatcher:
                 )
             if hit:
                 ignored = not negated
-        return ignored
+                negated_override = negated
+        return (ignored, negated_override)
+
+    def is_ignored(self, root, path, is_dir):
+        return self._match_rules(root, path, is_dir)[0]
+
+    def is_negation_override(self, root, path, is_dir):
+        """True if the last matching rule is a '!pattern' negation.
+
+        Use this to let users re-include files that built-in defaults
+        would otherwise skip (e.g. '!migrations/' in .xzagentignore).
+        """
+        return self._match_rules(root, path, is_dir)[1]

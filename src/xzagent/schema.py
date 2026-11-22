@@ -402,34 +402,53 @@ def fetch_postgres_schema(dsn):
 
 
 def collect_db_schema(root, scanned_files):
-    """Return list of {name, source, columns, fks} from .sql files and SQLite DBs."""
+    """Return list of {name, source, columns, fks} from .sql files and SQLite DBs.
+
+    Django migration files are parsed even though migrations/ folders are
+    (by default) excluded from general indexing as framework noise: they are
+    skipped for code search, but still feed schema intelligence here.
+    """
     out = []
+    seen = set()
+
+    def push(tname, source, t):
+        key = (tname, source)
+        if key in seen:
+            return
+        seen.add(key)
+        out.append({"name": tname, "source": source,
+                    "columns": t["columns"], "fks": t["fks"]})
+
     for f in scanned_files:
         if f.ext == ".sql":
             try:
                 with open(f.abspath, encoding="utf-8", errors="ignore") as fh:
                     for tname, t in parse_sql_schema(fh.read()).items():
-                        out.append({"name": tname, "source": f.path,
-                                    "columns": t["columns"], "fks": t["fks"]})
+                        push(tname, f.path, t)
             except OSError:
                 pass
         if f.ext == ".py" and "migrations" in f.path:
             try:
                 with open(f.abspath, encoding="utf-8", errors="ignore") as fh:
                     for tname, t in parse_django_migrations(fh.read()).items():
-                        out.append({"name": tname, "source": f.path,
-                                    "columns": t["columns"], "fks": t["fks"]})
+                        push(tname, f.path, t)
             except OSError:
                 pass
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in {".git", "node_modules", ".xzagent"}]
         for fn in filenames:
+            full = os.path.join(dirpath, fn)
+            rel = os.path.relpath(full, root).replace(os.sep, "/")
             if fn.lower().endswith(DB_EXTS):
-                full = os.path.join(dirpath, fn)
-                rel = os.path.relpath(full, root).replace(os.sep, "/")
                 for tname, t in read_sqlite_schema(full).items():
-                    out.append({"name": tname, "source": rel,
-                                "columns": t["columns"], "fks": t["fks"]})
+                    push(tname, rel, t)
+            elif fn.endswith(".py") and rel != "__init__.py" and "migrations" in rel.split("/"):
+                try:
+                    with open(full, encoding="utf-8", errors="ignore") as fh:
+                        for tname, t in parse_django_migrations(fh.read()).items():
+                            push(tname, rel, t)
+                except OSError:
+                    pass
     return out
 
 

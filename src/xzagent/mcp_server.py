@@ -2,6 +2,7 @@ import json
 import os
 import sys
 
+from .find import find_matching
 from .graph import call_graph, neighbors
 from .index import connect, default_db_path, ensure_index
 from .map import repo_map
@@ -26,14 +27,59 @@ TOOLS = [
     },
     {
         "name": "find_files",
-        "description": "Rank the most relevant files for a natural-language task (offline BM25 + graph boost).",
+        "description": "Rank the most relevant files for a natural-language task (offline BM25 + graph boost). "
+                       "Use for 'where should I make this change' questions. "
+                       "Restrict with 'pattern' (target only files like api_v2*), 'only_lang', 'skip_ext' (e.g. .md,.txt), 'skip_dirs' (e.g. docs,tests), "
+                       "and prefer the most recently edited matches with recent=true.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "task": {"type": "string", "description": "What the agent is trying to do or fix"},
-                "top_k": {"type": "integer", "default": 8},
+                "task": {"type": "string", "description": "What the agent is trying to do or fix (use English code keywords)"},
+                "query": {"type": "string", "description": "Alias of task"},
+                "top_k": {"type": "integer", "default": 15, "description": "Max results returned (0 = all matches)"},
+                "pattern": {"type": "string", "description": "Glob(s) the candidate files must match: 'api_v2*', '*Dialog*.tsx', 'web/**' (basename or full path)"},
+                "only_lang": {"type": "string", "description": "Comma-separated languages to keep: 'python', 'typescript,tsx'"},
+                "skip_ext": {"type": "string", "description": "Comma-separated extensions to skip: '.md,.txt,.log'"},
+                "skip_dirs": {"type": "string", "description": "Comma-separated directory names to skip: 'docs,tests,generated'"},
+                "recent": {"type": "boolean", "default": False, "description": "Prefer the most recently modified matches (continue-where-I-left-off tasks)"},
             },
             "required": ["task"],
+        },
+    },
+    {
+        "name": "find",
+        "description": "Find files by NAME/PATH pattern, not content relevance: 'api_v2*' (versioned API files), "
+                       "'*Dialog*.tsx', 'docs/**', with optional language, extension, defining-symbol, and exclusion filters. "
+                       "Use this BEFORE find_files when the task names specific file names or a versioned subset, "
+                       "so you target api_v2 files instead of every api file. recent=true sorts by last modified.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "pattern": {"type": "string", "description": "Comma-separated globs matched against basename and full path: 'api_v2*', 'client_*_v2', '*Handler.py'"},
+                "lang": {"type": "string", "description": "Comma-separated languages: 'python', 'typescript,tsx'"},
+                "ext": {"type": "string", "description": "Comma-separated extensions: '.tsx,.ts'"},
+                "symbol": {"type": "string", "description": "Only files defining a class/function matching this glob: 'Dialog*', '*Handler'"},
+                "skip_ext": {"type": "string", "description": "Comma-separated extensions to skip: '.md,.txt'"},
+                "skip_dirs": {"type": "string", "description": "Comma-separated directory names to skip: 'docs,generated'"},
+                "recent": {"type": "boolean", "default": False, "description": "Sort by last-modified time, newest first"},
+                "top": {"type": "integer", "default": 50, "description": "Limit result count"},
+            },
+        },
+    },
+    {
+        "name": "recent_files",
+        "description": "The most recently modified files in the project (newest first), with last-modified timestamps. "
+                       "Use for 'what was I working on / continue the last task' questions, or after the user says "
+                       "'this file here' without naming it. Optional pattern/lang/skip filters.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "count": {"type": "integer", "default": 15, "description": "How many files to return"},
+                "pattern": {"type": "string", "description": "Optional glob filter: 'api_*', '*Dialog*'"},
+                "lang": {"type": "string", "description": "Optional language filter: 'typescript'"},
+                "skip_ext": {"type": "string", "description": "Comma-separated extensions to skip: '.md,.txt'"},
+                "skip_dirs": {"type": "string", "description": "Comma-separated directory names to skip"},
+            },
         },
     },
     {
@@ -118,8 +164,38 @@ class Server:
             per_dir = int(args.get("per_dir", 25) or 0) or None
             return repo_map(self.con, max_per_dir=per_dir, include_files_list=bool(args.get("files", False)))
         if name == "find_files":
-            ranked = rank_files(self.con, _arg(args, "task", "query"), top_k=int(args.get("top_k", 8)))
+            ranked = rank_files(
+                self.con, _arg(args, "task", "query"),
+                top_k=int(args.get("top_k", 15) or 0),
+                pattern=args.get("pattern"),
+                only_lang=args.get("only_lang"),
+                exclude_exts=args.get("skip_ext"),
+                exclude_dirs=args.get("skip_dirs"),
+                recent_bias=bool(args.get("recent", False)),
+            )
             return json.dumps(ranked, indent=2)
+        if name == "find":
+            return json.dumps(find_matching(
+                self.con,
+                pattern=args.get("pattern"),
+                lang=args.get("lang"),
+                ext=args.get("ext"),
+                symbol=args.get("symbol"),
+                exclude_exts=args.get("skip_ext"),
+                exclude_dirs=args.get("skip_dirs"),
+                recent=bool(args.get("recent", False)),
+                top=int(args.get("top", 50) or 0) or None,
+            ), indent=2, default=str)
+        if name == "recent_files":
+            return json.dumps(find_matching(
+                self.con,
+                pattern=args.get("pattern"),
+                lang=args.get("lang"),
+                exclude_exts=args.get("skip_ext"),
+                exclude_dirs=args.get("skip_dirs"),
+                recent=True,
+                top=int(args.get("count", 15) or 15),
+            ), indent=2, default=str)
         if name == "file_outline":
             path = normalize_path(self.root, _arg(args, "path", "file_path", "file"))
             rows = self.con.execute(
