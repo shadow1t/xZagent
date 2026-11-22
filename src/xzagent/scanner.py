@@ -28,7 +28,12 @@ class ScannedFile:
 
 
 def scan(root):
-    """Walk root and return indexable text files, honoring .gitignore and defaults."""
+    """Walk root and return indexable text files.
+
+    Honors .gitignore (in every visited directory) plus, from the project root,
+    a .xzagentignore file (same gitignore syntax) for index-time exclusions
+    such as generated docs, vendored folders, or noise file patterns.
+    """
     root = os.path.abspath(root)
     matcher = GitignoreMatcher()
     results = []
@@ -37,6 +42,11 @@ def scan(root):
         if os.path.isfile(gi):
             with open(gi, encoding="utf-8", errors="ignore") as fh:
                 matcher.add_gitignore(dirpath, fh.read())
+        if dirpath == root:
+            xzignore = os.path.join(root, ".xzagentignore")
+            if os.path.isfile(xzignore):
+                with open(xzignore, encoding="utf-8", errors="ignore") as fh:
+                    matcher.add_gitignore(root, fh.read())
         dirnames[:] = [
             d for d in dirnames
             if not _ignored_name(d)

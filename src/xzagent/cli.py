@@ -3,6 +3,7 @@ import json
 import os
 import sys
 
+from .find import find_matching, recently_modified
 from .graph import call_graph, neighbors
 from .index import connect, default_db_path, ensure_index
 from .map import repo_map
@@ -40,8 +41,50 @@ def cmd_map(args):
 
 def cmd_ask(args):
     root, db, con = _open_db(args)
-    for path, score, reasons in rank_files(con, args.query, top_k=args.top):
+    top = args.top or 0
+    for path, score, reasons in rank_files(
+        con, args.query,
+        top_k=top,
+        pattern=getattr(args, "pattern", None),
+        only_lang=getattr(args, "lang", None),
+        exclude_exts=getattr(args, "skip_ext", None),
+        exclude_dirs=getattr(args, "skip_dirs", None),
+        recent_bias=getattr(args, "recent", False),
+    ):
         print("%.2f  %s  (%s)" % (score, path, ", ".join(reasons[:3])))
+    return 0
+
+
+def cmd_find(args):
+    root, db, con = _open_db(args)
+    recent = bool(getattr(args, "recent", False))
+    if recent and not args.pattern:
+        rows = recently_modified(
+            con,
+            count=args.top or 15,
+            exclude_exts=getattr(args, "skip_ext", None),
+            exclude_dirs=getattr(args, "skip_dirs", None),
+        )
+    else:
+        rows = find_matching(
+            con,
+            pattern=args.pattern,
+            lang=getattr(args, "lang", None),
+            ext=getattr(args, "ext", None),
+            symbol=getattr(args, "symbol", None),
+            exclude_exts=getattr(args, "skip_ext", None),
+            exclude_dirs=getattr(args, "skip_dirs", None),
+            recent=recent,
+            top=args.top or None,
+        )
+    if not rows:
+        print("No matching files.")
+        return 0
+    for r in rows:
+        line = "%-5s %s  %s" % (r["lang"] or "text", r["modified"], r["path"])
+        if r.get("symbols"):
+            line += "  [" + ", ".join(r["symbols"][:4]) + "]"
+        print(line)
     return 0
 
 
@@ -135,8 +178,26 @@ def build_parser():
     sp = sub.add_parser("ask", help="Rank files relevant to a task")
     add_root(sp)
     sp.add_argument("query")
-    sp.add_argument("--top", type=int, default=10)
+    sp.add_argument("--top", type=int, default=10, help="Max results (0 = all matches)")
+    sp.add_argument("--pattern", metavar="GLOB", help="Only rank files matching this glob (e.g. api_v2* or *Dialog*.tsx)")
+    sp.add_argument("--lang", help="Only these languages, comma-separated (e.g. python,typescript)")
+    sp.add_argument("--skip-ext", metavar="EXTS", help="Skip extensions, comma-separated (e.g. .md,.txt)")
+    sp.add_argument("--skip-dirs", metavar="DIRS", help="Skip these directory names, comma-separated (e.g. docs,tests)")
+    sp.add_argument("--recent", action="store_true", help="Prefer recently modified files among the matches")
     sp.set_defaults(func=cmd_ask)
+
+    sp = sub.add_parser("find", help="Find files by name/path glob, language, extension, or defining symbol")
+    add_root(sp)
+    sp.add_argument("pattern", nargs="?", default=None,
+                    help="Glob pattern(s), comma-separated: 'api_v2*', '*Dialog*.tsx', 'docs/**'")
+    sp.add_argument("--lang", help="Filter by language, comma-separated (e.g. tsx,python)")
+    sp.add_argument("--ext", metavar="EXTS", help="Filter by extension, comma-separated (e.g. .tsx,.ts)")
+    sp.add_argument("--symbol", metavar="GLOB", help="Only files defining a class/function matching glob (e.g. Dialog*, *Handler)")
+    sp.add_argument("--skip-ext", metavar="EXTS", help="Skip extensions, comma-separated (e.g. .md,.txt)")
+    sp.add_argument("--skip-dirs", metavar="DIRS", help="Skip directory names, comma-separated (e.g. docs,generated)")
+    sp.add_argument("--recent", action="store_true", help="Sort by last-modified (newest first)")
+    sp.add_argument("--top", type=int, default=None, help="Limit result count")
+    sp.set_defaults(func=cmd_find)
 
     sp = sub.add_parser("pack", help="Write a full context pack (context.md) for a task")
     add_root(sp)

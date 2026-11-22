@@ -83,6 +83,13 @@ class TestMcp(unittest.TestCase):
             {"jsonrpc": "2.0", "id": 9, "method": "tools/call",
              "params": {"name": "call_graph",
                         "arguments": {"file_path": "app/main.py", "symbol_name": "login"}}},
+            {"jsonrpc": "2.0", "id": 10, "method": "tools/call",
+             "params": {"name": "find", "arguments": {"pattern": "api*", "top": 10}}},
+            {"jsonrpc": "2.0", "id": 11, "method": "tools/call",
+             "params": {"name": "recent_files", "arguments": {"count": 3}}},
+            {"jsonrpc": "2.0", "id": 12, "method": "tools/call",
+             "params": {"name": "find_files",
+                        "arguments": {"task": "user fetch api", "pattern": "web/*", "skip_ext": ".md,.txt"}}},
         ]
         proc = subprocess.run(
             [sys.executable, "-m", "xzagent", "serve", self.root],
@@ -97,6 +104,8 @@ class TestMcp(unittest.TestCase):
         tool_names = {t["name"] for t in by_id[2]["result"]["tools"]}
         self.assertIn("find_files", tool_names)
         self.assertIn("context_pack", tool_names)
+        self.assertIn("find", tool_names)
+        self.assertIn("recent_files", tool_names)
         ranked = json.loads(by_id[3]["result"]["content"][0]["text"])
         self.assertEqual(ranked[0][0], "app/auth.py")
         cg = json.loads(by_id[4]["result"]["content"][0]["text"])
@@ -113,6 +122,15 @@ class TestMcp(unittest.TestCase):
         cg_alias = json.loads(by_id[9]["result"]["content"][0]["text"])
         self.assertEqual(cg_alias["symbol"], "login")
         self.assertIn("app/main.py", cg_alias["callers"])
+        found = json.loads(by_id[10]["result"]["content"][0]["text"])
+        self.assertIn("web/api.js", {r["path"] for r in found})
+        rf = json.loads(by_id[11]["result"]["content"][0]["text"])
+        self.assertEqual(len(rf), 3)
+        mtimes = [r["mtime"] for r in rf]
+        self.assertEqual(mtimes, sorted(mtimes, reverse=True))
+        filtered = json.loads(by_id[12]["result"]["content"][0]["text"])
+        self.assertTrue(filtered)
+        self.assertTrue(all(p.startswith("web/") for p, _, _ in filtered))
 
 
 if __name__ == "__main__":
