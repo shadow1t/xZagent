@@ -155,6 +155,10 @@ details.src summary::-webkit-details-marker{display:none}
 details.src summary:hover{background:#1e293b}
 details.src summary .cnt{color:#64748b;font-weight:400}
 details.src summary .dot{width:9px;height:9px;border-radius:50%;flex:none}
+#side .tools{position:sticky;top:0;background:#101a30;padding:6px 2px 8px;display:flex;gap:8px;align-items:center;z-index:2;border-bottom:1px solid #1a2740;margin-bottom:6px}
+#side .tools .cnt{color:#64748b;font-size:11px}
+#side .tools button{background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer}
+#side .tools button:hover{color:#e2e8f0;border-color:#3b82f6}
 .titem{padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;transition:background .1s;margin-left:6px}
 .titem:hover{background:#1e293b}
 .titem.sel{background:#2563eb;color:#fff}
@@ -304,13 +308,29 @@ function match(t,q){
   return t.columns.some(function(c){return c.toLowerCase().indexOf(q)>=0;});
 }
 function visible(t){ return !disabledSources.has(t.source); }
+const sideItem = {};
 function buildSide(q){
   q=q||'';
   side.innerHTML='';
+  // many databases: groups start COLLAPSED, one click opens the lot
+  const startOpen = sources.length<=3;
+  const bar=document.createElement('div'); bar.className='tools';
+  const cnt=document.createElement('span'); cnt.className='cnt';
+  cnt.textContent=sources.length+' db'+(sources.length>1?'s':'');
+  const foldBtn=document.createElement('button'); foldBtn.id='foldBtn';
+  foldBtn.textContent=startOpen?'close all':'open all';
+  bar.appendChild(cnt); bar.appendChild(foldBtn);
+  side.appendChild(bar);
+  const dets=[];
+  foldBtn.onclick=function(){
+    const anyOpen=dets.some(function(d){return d.open;});
+    dets.forEach(function(d){d.open=!anyOpen;});
+    foldBtn.textContent=anyOpen?'open all':'close all';
+  };
   sources.forEach(function(s){
     const ts=data.filter(function(t){return t.source===s && visible(t) && match(t,q);});
     if(q && !ts.length) return;
-    const det=document.createElement('details'); det.className='src'; det.open=true;
+    const det=document.createElement('details'); det.className='src'; det.open=startOpen;
     const sum=document.createElement('summary');
     const total=data.filter(function(t){return t.source===s;}).length;
     sum.innerHTML='<span class="dot" style="background:'+(sColor[s])+'"></span>'+esc(srcLabel(s))+' <span class="cnt">'+ts.length+(ts.length!==total?' / '+total:'')+' tables</span>';
@@ -320,7 +340,9 @@ function buildSide(q){
       const d=document.createElement('div'); d.className='titem'; d.dataset.name=t.name;
       d.innerHTML='<span>'+esc(t.name)+'</span><span class="nfk">'+t.fks.length+' fk</span>';
       d.onclick=function(){select(t.name);}; det.appendChild(d);
+      sideItem[t.name]={el:d,det:det};
     });
+    dets.push(det);
     side.appendChild(det);
   });
 }
@@ -336,6 +358,9 @@ function select(name){
   document.getElementById('tsrc').textContent='source: '+t.source+' · '+t.columns.length+' columns · '+t.fks.length+' foreign keys';
   document.querySelectorAll('.titem').forEach(function(e){e.classList.toggle('sel',e.dataset.name===name);});
   document.querySelectorAll('.card').forEach(function(e){e.classList.toggle('sel',e.dataset.name===name);});
+  // the selected table's sidebar group opens itself, then scrolls to the row
+  const sit=sideItem[name];
+  if(sit){ sit.det.open=true; if(sit.el.scrollIntoView) sit.el.scrollIntoView({block:'nearest'}); }
   document.getElementById('detail').dataset.open='1';
   const cb=document.getElementById('cbody'); cb.innerHTML='';
   t.columns.forEach(function(c){

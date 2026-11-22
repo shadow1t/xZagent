@@ -158,6 +158,9 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("across databases", html)  # cross-db fk notice
         # HTML-escaping helper ships in the template (names are injected raw)
         self.assertIn("function esc(", html)
+        # sidebar group folding: open-all/close-all + collapsed by default
+        self.assertIn("foldBtn", html)
+        self.assertIn("sideItem", html)
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows
