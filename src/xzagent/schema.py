@@ -256,14 +256,19 @@ function proj(n){
   const R=300, f=2.2/(2.2-z);
   return {x:x*R*f, y:y*R*f, z, f};
 }
-function drawGraph(){
-  svg.innerHTML=''; nodeEls=[]; edgeEls=[];
+// zoom/pan only rewrite the viewBox: no rebuild, instant at any db size
+function updateViewBox(){
   const W=svg.clientWidth||800, H=svg.clientHeight||420;
   svg.setAttribute('viewBox',(-W/2/zoom+pan.x)+' '+(-H/2/zoom+pan.y)+' '+(W/zoom)+' '+(H/zoom));
+}
+function drawGraph(){
+  svg.innerHTML=''; nodeEls=[]; edgeEls=[];
+  updateViewBox();
   const ps=nodes.map(function(n){return {n:n,p:proj(n)};});
   const pName={}; ps.forEach(function(o){pName[o.n.key]=o.p;});
   links.forEach(function(l){
     if(disabledSources.has(l.s.source)||disabledSources.has(l.t.source)) return;
+    if(hiddenKeys.has(l.s.key)||hiddenKeys.has(l.t.key)) return;
     const a=pName[l.s.key], b=pName[l.t.key];
     const e=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,'class':(l.cross?'edge cross':'edge')});
     e.style.opacity=0.05+0.45*((a.z+b.z)/2+1)/2;
@@ -282,6 +287,7 @@ function drawGraph(){
   ps.sort(function(o1,o2){return o1.p.z-o2.p.z;}).forEach(function(op){
     const n=op.n, p=op.p;
     if(disabledSources.has(n.source)) return;
+    if(hiddenKeys.has(n.key)) return;
     const g=el('g',{'class':'node'});
     g.style.setProperty('--sc',sColor[n.source]||'#2563eb');
     g.appendChild(el('circle',{cx:p.x,cy:p.y,r:15*Math.max(.6,p.f)}));
@@ -292,7 +298,6 @@ function drawGraph(){
     g.appendChild(tx);
     g.onclick=function(){select(n.key);};
     g.onmouseenter=function(){tx.style.opacity=1;}; g.onmouseleave=function(){if(!showAllLabels&&p.z<=FRONT_Z)tx.style.opacity=0;};
-    if(hiddenKeys.has(n.key)) g.style.display='none';
     if(selectedKey===n.key) g.classList.add('sel');
     svg.appendChild(g); nodeEls.push({g:g,n:n});
   });
@@ -308,9 +313,8 @@ svg.onmousedown=function(e){
 window.onmousemove=function(e){if(drag){
   // direct manipulation: the view follows the cursor (dragging down
   // moves the content down, not the camera)
-  if(drag.pan){ pan.x=drag.px-(e.clientX-drag.x)/zoom; pan.y=drag.py-(e.clientY-drag.y)/zoom; }
-  else { rot.ry=drag.ry-(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; }
-  scheduleDraw();
+  if(drag.pan){ pan.x=drag.px-(e.clientX-drag.x)/zoom; pan.y=drag.py-(e.clientY-drag.y)/zoom; updateViewBox(); }
+  else { rot.ry=drag.ry-(e.clientX-drag.x)*0.008; rot.rx=drag.rx+(e.clientY-drag.y)*0.008; scheduleDraw(); }
 }};
 window.onmouseup=function(){drag=null; svg.classList.remove('grabbing');};
 document.getElementById('hand').onclick=function(e){
@@ -320,9 +324,9 @@ document.getElementById('hand').onclick=function(e){
   e.target.textContent = tool==='pan' ? '✋' : '🔄';
   e.target.title = tool==='pan' ? 'pan mode (click to rotate)' : 'hand tool: drag to pan planet';
 };
-svg.onwheel=function(e){e.preventDefault();zoom=Math.min(20,Math.max(.4,zoom*(e.deltaY<0?1.2:1/1.2)));scheduleDraw();};
-document.getElementById('zIn').onclick=function(){zoom=Math.min(20,zoom*1.5);drawGraph();};
-document.getElementById('zOut').onclick=function(){zoom=Math.max(.4,zoom/1.5);drawGraph();};
+svg.onwheel=function(e){e.preventDefault();zoom=Math.min(20,Math.max(.4,zoom*(e.deltaY<0?1.2:1/1.2)));updateViewBox();};
+document.getElementById('zIn').onclick=function(){zoom=Math.min(20,zoom*1.5);updateViewBox();};
+document.getElementById('zOut').onclick=function(){zoom=Math.max(.4,zoom/1.5);updateViewBox();};
 document.getElementById('zReset').onclick=function(){zoom=1;pan={x:0,y:0};rot={rx:-0.4,ry:0.6};resetGraph();drawGraph();};
 document.getElementById('sideToggle').onclick=function(){document.getElementById('side').classList.toggle('closed');};
 const side=document.getElementById('side');

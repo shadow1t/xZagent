@@ -1,3 +1,3 @@
 """xzagent - offline context packer for AI agents working on local projects."""
 
-__version__ = "0.2.19"
+__version__ = "0.2.20"
