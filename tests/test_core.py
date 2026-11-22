@@ -166,6 +166,8 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("function keyOf(", html)
         self.assertIn("byKey", html)
         self.assertIn("soloSource", html)
+        self.assertIn("FRONT_Z", html)          # front-only auto node labels
+        self.assertIn("'elabel'", html)        # fk column labels on hot edges
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows

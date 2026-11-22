@@ -112,7 +112,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <title>DB schema explorer</title>
 <style>
 *{box-sizing:border-box}
-body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 600px at 70% -10%,#16233f 0%,#0b1220 55%);color:#e2e8f0;margin:0;overflow:hidden;display:flex;flex-direction:column;height:100vh}
+body{font-family:'Segoe UI','Inter',system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 600px at 70% -10%,#16233f 0%,#0b1220 55%);color:#e2e8f0;margin:0;overflow:hidden;display:flex;flex-direction:column;height:100vh}
 #top{flex:none;display:flex;gap:10px;align-items:center;padding:10px 16px;background:linear-gradient(180deg,#131f38,#111c33);border-bottom:1px solid #1f2d4d;font-size:14px;box-shadow:0 2px 12px #0008;flex-wrap:wrap}
 #top b{color:#93c5fd;font-size:15px;letter-spacing:.3px}
 #top input{background:#0b1220;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:7px 12px;width:290px;outline:none;transition:border .15s}
@@ -169,14 +169,14 @@ details.src summary .dot{width:9px;height:9px;border-radius:50%;flex:none}
 #graph{width:100%;height:440px;background:radial-gradient(600px 300px at 50% 40%,#12203a 0%,#0d1526 70%);border:1px solid #1f2d4d;border-radius:12px;box-shadow:inset 0 0 40px #0006}
 .node circle{fill:var(--sc,#2563eb);stroke:#93c5fd;stroke-width:1.5;cursor:pointer;transition:r .1s}
 .node.sel circle{fill:#f97316;stroke:#fdba74;stroke-width:2.5}
-.node text{fill:#fff;font-size:11px;text-anchor:middle;pointer-events:none;opacity:0;transition:opacity .15s;text-shadow:0 1px 3px #000}
+.node text{fill:#fff;font-size:12px;text-anchor:middle;pointer-events:none;opacity:0;transition:opacity .15s;text-shadow:0 1px 3px #000}
 .node:hover text, .node.near text, .node.sel text{opacity:1}
 .node.dim{opacity:.12}
 .edge{stroke:#475569;stroke-width:1}
 .edge.cross{stroke:#fbbf24;stroke-width:1.8;stroke-dasharray:7 5}
 .edge.hot{stroke:#f97316;stroke-width:3.5;filter:drop-shadow(0 0 4px #f97316aa)}
 #graph.no-edges .edge:not(.hot){display:none}
-.elabel{fill:#fdba74;font-size:10px;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:#0b1220;stroke-width:4px;stroke-linejoin:round;font-weight:600}
+.elabel{fill:#fdba74;font-size:10.5px;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:#0b1220;stroke-width:4px;stroke-linejoin:round;font-weight:600}
 h2{font-size:18px;margin:14px 0 4px;color:#93c5fd}
 .srchip{display:inline-block;border:1px solid;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:600;margin-left:8px;vertical-align:middle;background:#0b122080}
 .src{color:#64748b;font-size:12px;margin-bottom:10px}
@@ -240,6 +240,8 @@ nodes.forEach(function(n){ n.fks.forEach(function(fk){
   if(to) links.push({s:n,t:to,fk:fk,cross:n.source!==to.source});
 });});
 const hasCross = links.some(function(l){return l.cross;});
+// auto-labels only the clearly-front nodes, so a busy ball stays quiet
+const FRONT_Z=0.25;
 const ns='http://www.w3.org/2000/svg';
 function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);return e}
 const svg=document.getElementById('graph');
@@ -259,14 +261,23 @@ function drawGraph(){
   const W=svg.clientWidth||800, H=svg.clientHeight||420;
   svg.setAttribute('viewBox',(-W/2/zoom+pan.x)+' '+(-H/2/zoom+pan.y)+' '+(W/zoom)+' '+(H/zoom));
   const ps=nodes.map(function(n){return {n:n,p:proj(n)};});
-  const pName={}; ps.forEach(function(o){pName[o.n.name]=o.p;});
+  const pName={}; ps.forEach(function(o){pName[o.n.key]=o.p;});
   links.forEach(function(l){
     if(disabledSources.has(l.s.source)||disabledSources.has(l.t.source)) return;
-    const a=pName[l.s.name], b=pName[l.t.name];
+    const a=pName[l.s.key], b=pName[l.t.key];
     const e=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,'class':(l.cross?'edge cross':'edge')});
-    e.style.opacity=0.08+0.5*((a.z+b.z)/2+1)/2;
-    if(selectedKey && (l.s.key===selectedKey||l.t.key===selectedKey)) e.classList.add('hot');
+    e.style.opacity=0.05+0.45*((a.z+b.z)/2+1)/2;
+    const hot = selectedKey && (l.s.key===selectedKey||l.t.key===selectedKey);
+    if(hot) e.classList.add('hot');
+    if(l.cross && !hot) e.style.opacity*=0.75;
     svg.appendChild(e); edgeEls.push({e:e,l:l});
+    // relation label: the fk COLUMN on the selected table's own edges
+    if(hot && l.s.key!==l.t.key){
+      const lb=el('text',{x:(a.x+b.x)/2, y:(a.y+b.y)/2-6, 'class':'elabel'});
+      lb.textContent=l.fk.column;
+      lb.style.opacity=Math.min(1, Math.max(.3, ((a.z+b.z)/2+1)/2));
+      svg.appendChild(lb);
+    }
   });
   ps.sort(function(o1,o2){return o1.p.z-o2.p.z;}).forEach(function(op){
     const n=op.n, p=op.p;
@@ -276,11 +287,11 @@ function drawGraph(){
     g.appendChild(el('circle',{cx:p.x,cy:p.y,r:15*Math.max(.6,p.f)}));
     g.style.opacity=0.35+0.65*Math.max(0,(p.z+1)/2);
     const tx=el('text',{x:p.x,y:p.y-22}); tx.textContent=n.name;
-    tx.style.opacity=(showAllLabels||p.z>-0.2)?1:0;
+    tx.style.opacity=(showAllLabels||p.z>FRONT_Z)?1:0;
     tx.setAttribute('paint-order','stroke'); tx.setAttribute('stroke','#0b1220'); tx.setAttribute('stroke-width','4');
     g.appendChild(tx);
     g.onclick=function(){select(n.key);};
-    g.onmouseenter=function(){tx.style.opacity=1;}; g.onmouseleave=function(){if(!showAllLabels&&p.z<=-0.2)tx.style.opacity=0;};
+    g.onmouseenter=function(){tx.style.opacity=1;}; g.onmouseleave=function(){if(!showAllLabels&&p.z<=FRONT_Z)tx.style.opacity=0;};
     if(hiddenKeys.has(n.key)) g.style.display='none';
     if(selectedKey===n.key) g.classList.add('sel');
     svg.appendChild(g); nodeEls.push({g:g,n:n});
