@@ -4,7 +4,7 @@ import os
 import sys
 import time
 
-from .find import find_matching, recently_modified
+from .find import find_matching, find_on_disk, recently_modified
 from .graph import call_graph, neighbors
 from .index import connect, default_db_path, ensure_index
 from .map import repo_map
@@ -136,30 +136,47 @@ def cmd_ask(args):
 def cmd_find(args):
     root, db, con = _open_db(args)
     recent = bool(getattr(args, "recent", False))
+    common = {
+        "exclude_exts": getattr(args, "skip_ext", None),
+        "exclude_dirs": getattr(args, "skip_dirs", None),
+        "only_dirs": getattr(args, "only_dirs", None),
+        "only_exts": getattr(args, "only_ext", None),
+    }
     if recent and not args.pattern:
-        rows = recently_modified(
-            con,
-            count=args.top or 15,
-            exclude_exts=getattr(args, "skip_ext", None),
-            exclude_dirs=getattr(args, "skip_dirs", None),
-            only_dirs=getattr(args, "only_dirs", None),
-            only_exts=getattr(args, "only_ext", None),
-        )
+        rows = recently_modified(con, count=args.top or 15, **common)
     else:
+        # Pattern search also scans the disk for noise-skipped files
+        # (tmp_*, *.min.js, lockfiles, ...) the indexer never ingested:
+        # find is explicit targeting, so named matches must show up.
         rows = find_matching(
             con,
             pattern=args.pattern,
             lang=getattr(args, "lang", None),
             ext=getattr(args, "ext", None),
             symbol=getattr(args, "symbol", None),
-            exclude_exts=getattr(args, "skip_ext", None),
-            exclude_dirs=getattr(args, "skip_dirs", None),
-            only_dirs=getattr(args, "only_dirs", None),
-            only_exts=getattr(args, "only_ext", None),
             recent=recent,
-            top=args.top or None,
+            top=None,
             no_tests=getattr(args, "no_tests", False),
+            **common,
         )
+        if args.pattern and not getattr(args, "symbol", None):
+            disk_rows = find_on_disk(
+                root,
+                pattern=args.pattern,
+                lang=getattr(args, "lang", None),
+                ext=getattr(args, "ext", None),
+                no_tests=getattr(args, "no_tests", False),
+                extra_ignores=_split_skips(getattr(args, "skip", None)),
+                no_default_skips=(True if getattr(args, "index_all", None)
+                                  else (False if getattr(args, "default_skips", None) else None)),
+                **common,
+            )
+            have = {r["path"] for r in rows}
+            rows += [r for r in disk_rows if r["path"] not in have]
+            if recent:
+                rows.sort(key=lambda x: -x["mtime"])
+        if args.top:
+            rows = rows[:args.top]
     if not rows:
         print("No matching files.")
         return 0
@@ -170,12 +187,16 @@ def cmd_find(args):
                 paint(r["modified"], GRAY), paint(r["path"], WHITE, bold=True))
             if r.get("symbols"):
                 line += "  " + paint("[" + ", ".join(r["symbols"][:4]) + "]", VIOLET)
+            if r.get("on_disk"):
+                line += "  " + paint("\u00b7 not indexed", GRAY)
             print(line)
         return 0
     for r in rows:
         line = "%-5s %s  %s" % (r["lang"] or "text", r["modified"], r["path"])
         if r.get("symbols"):
             line += "  [" + ", ".join(r["symbols"][:4]) + "]"
+        if r.get("on_disk"):
+            line += "  [not indexed]"
         print(line)
     return 0
 

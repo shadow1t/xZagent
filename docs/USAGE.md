@@ -95,6 +95,19 @@ ctxp find . --recent --top 5          # the last 5 edited files
 Every result shows the file's last-modified time, and `--symbol` results also
 show the matching symbol names.
 
+Noise-skipped files (`tmp_*`, `package-lock.json`, `*.min.js`, ...) never
+enter the index, but `find` is an explicit targeting command: a pattern
+search ALSO scans the disk directly, so temp files show up when you name
+them, marked `[not indexed]`:
+
+```bash
+ctxp find . "tmp_*"                  # temp files are found on disk, marked
+ctxp find . "tmp_*" --skip-dirs logs  # disk matches honor every filter too
+```
+
+`.gitignore`, `.xzagentignore`, `--skip`, and all the filters above still
+apply. Only `--symbol` searches stay index-only (symbols need the index).
+
 ## Restricting search to given directories: `--only-dirs`
 
 The inverse of `--skip-dirs`: instead of naming what to ignore, name the

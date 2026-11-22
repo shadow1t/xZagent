@@ -400,5 +400,116 @@ class TestIndexSkipFlags(unittest.TestCase):
         self.assertIn("app.py", paths)
 
 
+class TestFindDiskFallback(unittest.TestCase):
+    """ctxp find (pattern search) also matches noise-skipped files ON DISK.
+
+    tmp_*/lockfiles/minified files never enter the index, but find is an
+    EXPLICIT targeting command: naming a pattern means the user wants
+    those files. Rows found only on disk are marked '[not indexed]'.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = os.path.join(self.tmp.name, "diskfb")
+        os.makedirs(self.root)
+        for rel, content in {
+            "app.py": "def main():\n    pass\n",
+            "api_v2.py": "class ApiV2:\n    pass\n",
+            "tmp_probe.py": "def t():\n    pass\n",
+            "temp_scratch.md": "scratch\n",
+            "package-lock.json": "{}\n",
+            "logs/tmp_secret.py": "def s():\n    pass\n",
+            "migrations/0001_initial.py": "def up():\n    pass\n",
+            "nomad/config.py": "def c():\n    pass\n",
+            ".gitignore": "ignored_dir/\n",
+            "ignored_dir/tmp_hidden.py": "def h():\n    pass\n",
+        }.items():
+            path = os.path.join(self.root, rel)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(content)
+        self.db = os.path.join(self.root, ".xzagent", "index.db")
+        self._run(["--db", self.db, "index", self.root])
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _run(self, argv):
+        import io
+        from contextlib import redirect_stdout
+
+        from xzagent.cli import main
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            main(argv)
+        return buf.getvalue()
+
+    def test_find_on_disk_unit(self):
+        from xzagent.find import find_on_disk
+        rows = {r["path"]: r for r in find_on_disk(self.root, pattern="tmp_*")}
+        self.assertIn("tmp_probe.py", rows)
+        self.assertIn("logs/tmp_hidden.py" if False else "logs/tmp_secret.py", rows)
+        self.assertTrue(all(r["on_disk"] for r in rows.values()))
+        self.assertTrue(rows["tmp_probe.py"]["mtime"] > 0)
+        self.assertEqual(rows["tmp_probe.py"]["lang"], "python")
+        # gitignored and built-in noise dirs stay hidden on disk too
+        self.assertNotIn("ignored_dir/tmp_hidden.py", rows)
+        self.assertNotIn("migrations/0001_initial.py", rows)  # migrations/ is a dir skip
+
+    def test_cli_shows_noise_matches_marked(self):
+        out = self._run(["--db", self.db, "find", self.root, "tmp_*"])
+        self.assertIn("tmp_probe.py", out)
+        self.assertIn("[not indexed]", out)
+        # package-lock.json matches a different pattern and shows too
+        out = self._run(["--db", self.db, "find", self.root, "*lock*"])
+        self.assertIn("package-lock.json", out)
+        self.assertIn("[not indexed]", out)
+
+    def test_cli_merges_index_and_disk_rows(self):
+        out = self._run(["--db", self.db, "find", self.root, "*.py"])
+        self.assertIn("app.py", out)
+        self.assertNotIn("app.py  [not indexed]", out)       # indexed: no marker
+        self.assertIn("tmp_probe.py  [not indexed]", out)    # noise: marked
+        self.assertIn("nomad/config.py", out)
+
+    def test_cli_disk_pass_honors_filters(self):
+        # --skip-dirs hides disk rows in those dirs
+        out = self._run(["--db", self.db, "find", self.root, "tmp_*", "--skip-dirs", "logs"])
+        self.assertNotIn("tmp_secret.py", out)
+        self.assertIn("tmp_probe.py", out)
+        # --only-dirs keeps only disk rows under the dir
+        out = self._run(["--db", self.db, "find", self.root, "tmp_*", "--only-dirs", "logs"])
+        self.assertIn("tmp_secret.py", out)
+        self.assertNotIn("tmp_probe.py  [not indexed]", out)
+        # --skip patterns travel to the disk walk as extra ignores
+        out = self._run(["--db", self.db, "--skip", "logs/", "find", self.root, "tmp_*"])
+        self.assertNotIn("tmp_secret.py", out)
+        # --no-tests applies to disk rows as well
+        out = self._run(["--db", self.db, "find", self.root, "tmp_*", "--no-tests"])
+        self.assertIn("tmp_probe.py", out)  # tmp_probe is not a test file
+
+    def test_cli_no_marker_after_index_all(self):
+        self._run(["--db", self.db, "--index-all", "index", self.root, "--reindex"])
+        out = self._run(["--db", self.db, "find", self.root, "tmp_*"])
+        self.assertIn("tmp_probe.py", out)
+        self.assertNotIn("[not indexed]", out)
+
+    def test_cli_symbol_search_skips_disk_pass(self):
+        # symbols need the index: no marker rows when --symbol is used
+        out = self._run(["--db", self.db, "find", self.root, "*", "--symbol", "ApiV2"])
+        self.assertIn("api_v2.py", out)
+        self.assertNotIn("[not indexed]", out)
+
+    def test_cli_recent_sorts_merged_rows(self):
+        # touch the noise file so it is the newest thing on disk
+        import time as _t
+        p = os.path.join(self.root, "tmp_probe.py")
+        when = _t.time() + 500
+        os.utime(p, (when, when))
+        out = self._run(["--db", self.db, "find", self.root, "*.py", "--recent"])
+        first = [ln for ln in out.splitlines() if ln.strip()][0]
+        self.assertIn("tmp_probe.py", first)
+
+
 if __name__ == "__main__":
     unittest.main()

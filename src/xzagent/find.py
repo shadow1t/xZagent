@@ -180,3 +180,96 @@ def recently_modified(con, count=15, exclude_exts=None, exclude_dirs=None,
 
 # Directory names that are commonly noise for search results.
 NOISE_DIR_HINTS = set(DEFAULT_IGNORE_DIRS)
+
+def find_on_disk(root, pattern=None, lang=None, ext=None, only_exts=None,
+                 exclude_exts=None, exclude_dirs=None, only_dirs=None,
+                 no_tests=False, extra_ignores=None, no_default_skips=False):
+    """Direct-disk glob fallback for ctxp find.
+
+    find is an explicit targeting command: when the user asks for files BY
+    NAME, the matches must show even if the indexer skipped them as noise
+    (tmp_*, *.min.js, lockfiles, *.log, oversized files, ...). This walks
+    the tree exactly like scanner.scan() — honoring .gitignore,
+    .xzagentignore, extra ignores, and built-in noise DIRECTORIES — but
+    lets noise-named FILES through, then applies the same find filters.
+
+    Returns rows in find_matching() shape with an extra on_disk=True flag
+    (cmd_find merges them with index rows and marks them 'not indexed').
+    Symbol filtering is impossible here (no index), so callers should skip
+    the disk pass when --symbol is given.
+    """
+    from .gitignore import GitignoreMatcher
+    from .languages import lang_for
+    from .scanner import _ignored_name as _ignored_dir
+
+    root = os.path.abspath(root)
+    patterns = parse_csv(pattern)
+    langs = {l.lower() for l in parse_csv(lang)}
+    exts = set(normalize_exts(ext)) | set(normalize_exts(only_exts))
+    exclude_exts_n = normalize_exts(exclude_exts)
+    exclude_dirs_n = parse_csv(exclude_dirs)
+    only_dir_set = set(parse_csv(only_dirs))
+
+    matcher = GitignoreMatcher()
+    extra_ignores = list(extra_ignores or [])
+    results = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        gi = os.path.join(dirpath, ".gitignore")
+        if os.path.isfile(gi):
+            with open(gi, encoding="utf-8", errors="ignore") as fh:
+                matcher.add_gitignore(dirpath, fh.read())
+        if dirpath == root:
+            xzignore = os.path.join(root, ".xzagentignore")
+            if os.path.isfile(xzignore):
+                with open(xzignore, encoding="utf-8", errors="ignore") as fh:
+                    matcher.add_gitignore(root, fh.read())
+            if extra_ignores:
+                matcher.add_gitignore(root, "\n".join(extra_ignores))
+
+        keep = []
+        for d in dirnames:
+            full = os.path.join(dirpath, d)
+            ignored = ((no_default_skips is False and _ignored_dir(d))
+                       or matcher.is_ignored(root, full, True))
+            if ignored and not matcher.is_negation_override(root, full, True):
+                continue
+            keep.append(d)
+        dirnames[:] = keep
+
+        for fn in filenames:
+            full = os.path.join(dirpath, fn)
+            if matcher.is_ignored(root, full, False) \
+                    and not matcher.is_negation_override(root, full, False):
+                continue
+            rel = os.path.relpath(full, root).replace(os.sep, "/")
+            if patterns and not glob_match(rel, patterns):
+                continue
+            f_lang = (lang_for(rel) or "text").lower()
+            if langs and f_lang not in langs:
+                continue
+            f_ext = os.path.splitext(rel)[1].lower()
+            if exts and f_ext not in exts:
+                continue
+            if only_dir_set and not (only_dir_set & _dir_parts(rel)):
+                continue
+            if no_tests and is_test_file(rel):
+                continue
+            if path_excluded(rel, exclude_exts_n, exclude_dirs_n):
+                continue
+            try:
+                st = os.stat(full)
+            except OSError:
+                continue
+            if not os.path.isfile(full):
+                continue
+            results.append({
+                "path": rel,
+                "lang": lang_for(rel) or "text",
+                "ext": f_ext,
+                "mtime": st.st_mtime,
+                "modified": _modified_iso(st.st_mtime),
+                "symbols": None,
+                "on_disk": True,
+            })
+    results.sort(key=lambda r: r["path"])
+    return results

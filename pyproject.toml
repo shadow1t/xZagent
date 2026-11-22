@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xzagent"
-version = "0.2.1"
+version = "0.2.2"
 description = "Offline context packer for AI agents on local projects: repo map, import/call graph, relevant-file ranking. No internet, no API keys."
 readme = "README.md"
 requires-python = ">=3.9"
