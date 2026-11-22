@@ -266,22 +266,57 @@ function drawGraph(){
   updateViewBox();
   const ps=nodes.map(function(n){return {n:n,p:proj(n)};});
   const pName={}; ps.forEach(function(o){pName[o.n.key]=o.p;});
+  // ONE line per pair of tables: several fk columns pointing at the
+  // same target used to draw the SAME line N times, with N labels
+  // stacked on top of each other (the 'two shapes side by side').
+  const pairOf={};
   links.forEach(function(l){
     if(disabledSources.has(l.s.source)||disabledSources.has(l.t.source)) return;
     if(hiddenKeys.has(l.s.key)||hiddenKeys.has(l.t.key)) return;
-    const a=pName[l.s.key], b=pName[l.t.key];
-    const e=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,'class':(l.cross?'edge cross':'edge')});
+    const k = l.s.key<l.t.key ? l.s.key+'||'+l.t.key : l.t.key+'||'+l.s.key;
+    const pr = pairOf[k] || (pairOf[k]={s:l.s,t:l.t,out:[],inn:[],cross:false,hot:false,l0:l});
+    if(l.cross) pr.cross = true;
+    if(selectedKey && (l.s.key===selectedKey||l.t.key===selectedKey)) pr.hot = true;
+    // the fk COLUMN lives in l.s (the many side); the arrow points s->t
+    if(l.s.key===pr.s.key) pr.out.push(l.fk.column); else pr.inn.push(l.fk.column);
+  });
+  // arrowheads on the selected relations: the head sits at the
+  // REFERENCED end, so you can read which side each column points to
+  const defs=el('defs',{});
+  const mA=el('marker',{id:'fkA',markerWidth:7,markerHeight:7,refX:6,refY:3.5,orient:'auto'});
+  mA.appendChild(el('path',{d:'M0,0 L7,3.5 L0,7 z',fill:'#fdba74'}));
+  const mR=el('marker',{id:'fkR',markerWidth:7,markerHeight:7,refX:1,refY:3.5,orient:'auto'});
+  mR.appendChild(el('path',{d:'M7,0 L0,3.5 L7,7 z',fill:'#fdba74'}));
+  defs.appendChild(mA); defs.appendChild(mR); svg.appendChild(defs);
+  Object.keys(pairOf).forEach(function(k){
+    const pr=pairOf[k];
+    const a=pName[pr.s.key], b=pName[pr.t.key];
+    const same = pr.s.key===pr.t.key;
+    const nFk = pr.out.length+pr.inn.length;
+    const e=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,'class':(pr.cross?'edge cross':'edge'),'stroke-width':(nFk>1?2.2:1)});
     e.style.opacity=0.05+0.45*((a.z+b.z)/2+1)/2;
-    const hot = selectedKey && (l.s.key===selectedKey||l.t.key===selectedKey);
-    if(hot) e.classList.add('hot');
-    if(l.cross && !hot) e.style.opacity*=0.75;
-    svg.appendChild(e); edgeEls.push({e:e,l:l});
-    // relation label: the fk COLUMN on the selected table's own edges
-    if(hot && l.s.key!==l.t.key){
-      const lb=el('text',{x:(a.x+b.x)/2, y:(a.y+b.y)/2-6, 'class':'elabel'});
-      lb.textContent=l.fk.column;
-      lb.style.opacity=Math.min(1, Math.max(.3, ((a.z+b.z)/2+1)/2));
-      svg.appendChild(lb);
+    if(pr.hot){
+      e.classList.add('hot');
+      if(!same){
+        if(pr.out.length) e.setAttribute('marker-end','url(#fkA)');
+        if(pr.inn.length) e.setAttribute('marker-start','url(#fkR)');
+      }
+    } else if(pr.cross) e.style.opacity*=0.75;
+    svg.appendChild(e); edgeEls.push({e:e,l:pr.l0});
+    // label: fk COLUMN names, JOINED when one pair carries several
+    // columns. Placed 70% of the way toward the FAR table so labels
+    // fan out to the rim instead of stacking on the selected node.
+    if(pr.hot && !same){
+      const from=(selectedKey===pr.t.key)?b:a, to=(selectedKey===pr.t.key)?a:b;
+      const mk=function(cols,f){
+        if(!cols.length) return;
+        const lb=el('text',{x:from.x+(to.x-from.x)*f, y:from.y+(to.y-from.y)*f-6, 'class':'elabel'});
+        lb.textContent=cols.join(' · ');
+        lb.style.opacity=Math.min(1, Math.max(.3, ((a.z+b.z)/2+1)/2));
+        svg.appendChild(lb);
+      };
+      if(pr.out.length && pr.inn.length){ mk(pr.out,0.62); mk(pr.inn,0.78); }
+      else mk(pr.out.concat(pr.inn),0.7);
     }
   });
   ps.sort(function(o1,o2){return o1.p.z-o2.p.z;}).forEach(function(op){

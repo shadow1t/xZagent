@@ -169,6 +169,8 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("FRONT_Z", html)          # front-only auto node labels
         self.assertIn("'elabel'", html)        # fk column labels on hot edges
         self.assertIn("updateViewBox", html)   # instant zoom/pan, no rebuild
+        self.assertIn("pairOf", html)           # duplicate fk lines merged per pair
+        self.assertIn("marker-end", html)       # direction arrowheads on hot edges
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows
