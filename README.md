@@ -18,12 +18,18 @@ Requires Python ≥ 3.9. Pure standard library — nothing to download at runtim
 
 ```bash
 ctxp index ./my-project                 # build the index (.xzagent/index.db)
-ctxp map ./my-project                   # print the repo map
+ctxp map ./my-project                   # print the repo map (every directory shown)
+ctxp map ./my-project --per-dir 40     # up to 40 files per directory in the tree
+ctxp map ./my-project --full           # every single file, no capping
 ctxp ask ./my-project "fix login bug"  # rank relevant files
 ctxp pack ./my-project "add dark mode" -o context.md   # full context pack
 ctxp graph ./my-project login           # call graph for a symbol
 ctxp graph ./my-project --path app/auth.py           # neighbors of a file
 ```
+
+## Scales to large projects
+
+The map never hides a directory: the tree always shows **every folder** and only caps the number of files listed *per directory* (`… (+N more in this dir)`), so a repo with 3000 UI files still renders a complete structural map a human or agent can read. Use `--full` when you want every single file, or `--per-dir N` to tune it.
 
 ## MCP server (for Claude Code / Cursor / Windsurf)
 

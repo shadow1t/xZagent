@@ -25,7 +25,10 @@ def cmd_index(args):
 
 def cmd_map(args):
     root, db, con = _open_db(args)
-    out = repo_map(con)
+    per_dir = getattr(args, "per_dir", 25)
+    if getattr(args, "full", False) or not per_dir:
+        per_dir = None
+    out = repo_map(con, max_per_dir=per_dir)
     if getattr(args, "output", None):
         with open(args.output, "w", encoding="utf-8") as fh:
             fh.write(out)
@@ -121,9 +124,12 @@ def build_parser():
     add_root(sp)
     sp.set_defaults(func=cmd_index)
 
-    sp = sub.add_parser("map", help="Print the repo map")
+    sp = sub.add_parser("map", help="Print the repo map (every directory is always shown)")
     add_root(sp)
     sp.add_argument("-o", "--output", help="Write the map to a file instead of stdout")
+    sp.add_argument("--per-dir", type=int, default=25, metavar="N",
+                    help="Max files shown per directory in the tree (default: 25, 0 = unlimited)")
+    sp.add_argument("--full", action="store_true", help="Show every file with no per-directory cap")
     sp.set_defaults(func=cmd_map)
 
     sp = sub.add_parser("ask", help="Rank files relevant to a task")
