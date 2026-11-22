@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="360" viewBox="0 0 880 360" font-family="Segoe UI, -apple-system, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="tcyan" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="tviolet" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <rect width="880" height="360" rx="14" fill="#0d1117"/>
+  <text x="440" y="44" text-anchor="middle" font-size="21" font-weight="700" fill="#e6edf3">What finding one bug costs: agent reads blind vs xZagent</text>
+  <text x="440" y="70" text-anchor="middle" font-size="13" fill="#7d8590">measured live on Flask 3.1.0 · src/ = 330 KB · tokens approximated at 4 chars/token · reproducible</text>
+
+  <text x="60" y="120" font-size="14" fill="#e6edf3">Agent reads all of src/ hoping to cover the right file</text>
+  <rect x="60" y="132" width="700" height="30" rx="6" fill="#f87171" opacity="0.25"/>
+  <rect x="60" y="132" width="700" height="30" rx="6" fill="#f87171"/>
+  <text x="772" y="152" font-size="15" font-weight="700" fill="#f87171">~84,300 tokens</text>
+
+  <text x="60" y="204" font-size="14" fill="#e6edf3">One ctxp pack: the 8 files that matter, ready to paste</text>
+  <rect x="60" y="216" width="85" height="30" rx="6" fill="url(#tcyan)"/>
+  <text x="157" y="236" font-size="15" font-weight="700" fill="#22d3ee">~10,200 tokens · 12% of a blind read, zero exploratory reads</text>
+
+  <text x="60" y="288" font-size="14" fill="#e6edf3">One ctxp ask: the ranked shortlist that names the files</text>
+  <rect x="60" y="300" width="6" height="30" rx="3" fill="url(#tviolet)"/>
+  <text x="78" y="320" font-size="15" font-weight="700" fill="#a78bfa">~120 tokens · 0.14% of a blind read</text>
+</svg>

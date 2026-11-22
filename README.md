@@ -7,7 +7,7 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Dependencies: 0](https://img.shields.io/badge/dependencies-0-success)](#install)
 [![100% offline](https://img.shields.io/badge/100%25-offline-7c3aed)](#private-by-design)
-[![Tests: 76 passing](https://img.shields.io/badge/tests-76%20passing-success)](#measured-not-estimated)
+[![Tests: 129 passing](https://img.shields.io/badge/tests-129%20passing-success)](#measured-not-estimated)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/shadow1t/xZagent?style=social)](https://github.com/shadow1t/xZagent/stargazers)
 
@@ -20,6 +20,22 @@
 </div>
 
 ---
+
+## Read this first: what a blind agent costs you
+
+An AI agent dropped into a project it has never seen does the only thing it can: **read**. Line 1 to 100 of some file, nothing there, 101 to 200, still nothing, next file. Every exploratory chunk is billed twice: once when the agent reads it, and again every time it keeps sitting in the conversation. The three files that actually matter might be 250 files away, waiting to be "discovered".
+
+This is not a feeling, it is arithmetic. Measured live against Flask 3.1.0 (~330 KB of `src/`, this exact run, reproducible):
+
+| Finding `fix session login security` | Context burned |
+|---|---|
+| Agent reads all of `src/` to be sure nothing is missed | **~84,300 tokens** |
+| `ctxp pack` -- the 8 files that matter, ready to paste | **~10,200 tokens** · 12% of a blind read |
+| `ctxp ask` -- the ranked shortlist that names those files up front | **~120 tokens** · 0.14% of a blind read |
+
+<div align="center"><img src="docs/assets/tokens.svg" width="820" alt="Token comparison: blind exploration vs xZagent"/></div>
+
+xZagent exists for the part that comes before the coding: it indexes your project offline once, then tells the agent **where to look** and **what to ignore**, in a fraction of a percent of the tokens a blind read costs.
 
 ## Why this exists
 
@@ -45,7 +61,7 @@ xZagent fixes the part that comes before the coding. It indexes the project offl
 | Guesses where code lives | Ranked shortlist per task |
 | Reads files one by one | Repo map + import/call graph upfront |
 | Tests and docs hijack attention | `--no-tests`, `--only-ext`, `--only-dirs` filters |
-| Whole folders get pasted into context | One ~40 KB context pack (measured on Flask: 39.9 KB vs 329 KB of `src/`) |
+| Whole folders get pasted into context | One ~40 KB context pack (measured on Flask: 40.8 KB vs 337 KB of `src/`) |
 | Cloud indexing, API keys, creepy | 100% offline, SQLite next to your code |
 
 ## How it works
@@ -63,10 +79,10 @@ The index lives at `.xzagent/index.db` and refreshes automatically when files ch
 - 🔌 **Works with Claude Code, Cursor, Windsurf and any MCP client** via a stdio MCP server exposing 9 tools (`repo_map`, `find`, `find_files`, `recent_files`, `file_outline`, `call_graph`, `neighbors`, `context_pack`, `db_schema`)
 - 🎯 **Smart targeting filters** so the agent works on `api_v2*` instead of every API file across versions, drops test-file hijackers with `--no-tests`, restricts ranking to real code with `--only-ext .py`, or to whole areas with `--only-dirs api,ui`. A pattern search also globs the disk directly, so even noise-skipped temp files (`tmp_*`) are found when you explicitly name them
 - 🗺️ **A repo map that scales**: every directory is always shown, only files per directory are capped, so a 3,000-file repo still renders a readable structure (`--full` for everything)
-- 🚀 **Fast**: indexed Flask's 227 files in **0.85 s** on a modest sandbox
+- 🚀 **Fast**: indexed Flask's 227 files in **0.7 s** on a modest sandbox
 - 🕵️ **Private by design**: no network calls, no API keys, no telemetry. Ever. Works on air-gapped machines and planes
-- 🎨 **A real terminal experience**: violet→cyan gradient ranking bars in `ask`, and a live progress bar (spinner + counts + percent + phase notes) during ANY index build -- explicit or the automatic rebuild behind `ask`/`map`/`find` -- with a guaranteed-animation ticker so the CLI never looks stuck. Auto-disabled when piped, respects `NO_COLOR`
-- 🔄 **One-command self-update**: `ctxp update` pulls your clone and reinstalls in place -- no more `pip uninstall && pip install`, and it handles the Windows `ctxp.exe` file lock for you
+- 🎨 **A real terminal experience**: violet→cyan gradient ranking bars in `ask`, a live progress bar (spinner + counts + percent + phase notes) during ANY index build -- explicit or the automatic rebuild behind `ask`/`map`/`find` -- with a guaranteed-animation ticker so the CLI never looks stuck. Auto-disabled when piped, respects `NO_COLOR`
+- 🔄 **One-command self-update**: `ctxp update` pulls your clone and reinstalls in place -- no more `pip uninstall && pip install`, it handles the Windows `ctxp.exe` file lock for you, shows a live spinner through the install, and serializes concurrent updaters behind a lock (two racing `ctxp update` runs can never double-install again)
 - 🧰 **Zero dependencies**: pure Python 3.9+ standard library. `pip install` and done
 - 🐘 **DB-aware**: even skips `migrations/` while still feeding the `db_schema` tool with tables, columns and foreign keys
 
@@ -135,10 +151,10 @@ Real numbers from this repository's tests and demos (Flask 3.1.0, 227 files, mod
 
 | Operation | Result |
 |---|---|
-| Fresh index of the repo | **0.85 s** |
+| Fresh index of the repo | **0.71 s** |
 | `ask "fix session login security"` | top 3 hits are exactly the right modules (`sessions.py`, `testing.py`, `app.py`) |
-| `pack` output for that task | **39.9 KB** of context vs **329 KB** of raw `src/` (8× smaller, and that's before ignoring docs and examples) |
-| Test suite | **76 tests, ~6 s**, stdlib only |
+| `pack` output for that task | **40.8 KB** of context vs **337 KB** of raw `src/` (8× smaller, and that's before ignoring docs and examples) |
+| Test suite | **129 tests, ~7 s**, stdlib only |
 
 ## Private by design
 
@@ -165,7 +181,7 @@ AGENTS.md       guidance for AI agents hacking on xZagent itself
 PRs are welcome. The project is deliberately stdlib-only: please keep new features dependency-free. Run the suite before opening a PR:
 
 ```bash
-python -m unittest discover -s tests -v   # 76 tests
+python -m unittest discover -s tests -v   # 129 tests
 ```
 
 ## License
