@@ -130,6 +130,42 @@ class TestColorEnvAndCliModes(unittest.TestCase):
         os.environ.update(self._before)
         self.tmp.cleanup()
 
+
+    def test_ticker_keeps_spinner_alive(self):
+        """Without new update() events the spinner still animates (thread)."""
+        import time as _time
+        env = dict(os.environ, FORCE_COLOR="1")
+        old = os.environ
+        os.environ.clear()
+        os.environ.update(env)
+        try:
+            ttyp = _FakeTty()
+            p = Progress(stream=ttyp, min_interval=999.0, tick=0.05)
+            self.assertTrue(p.enabled)
+            p.start()
+            p.update(1, 10, "indexing")
+            _time.sleep(0.3)
+            p.finish()
+            draws = len(ttyp.chunks)
+            self.assertGreaterEqual(draws, 3, "ticker did not animate: %d draws" % draws)
+            self.assertIsNone(p._thread)
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
+
+    def test_finish_never_drawn_is_silent(self):
+        ttyp = _FakeTty()
+        p = Progress(stream=ttyp, min_interval=0.0)
+        p.finish()  # no update() ever happened
+        self.assertEqual(ttyp.chunks, [])
+
+    def test_update_after_finish_no_eraser_leak(self):
+        p = Progress(stream=io.StringIO(), min_interval=0.0)
+        p.update(1, 2, "indexing")
+        p.finish()
+        p.update(1, 2, "indexing")  # disabled after finish? still silent (not tty)
+        self.assertEqual(p._drawn, False)
+
     def _run(self, argv):
         buf = io.StringIO()
         with redirect_stdout(buf):

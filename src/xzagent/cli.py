@@ -24,29 +24,39 @@ def _split_skips(value):
     return out
 
 
-def _open_db(args, progress=None):
+def _open_db(args):
+    """Open the index, showing live progress whenever a (re)build is needed.
+
+    Every command goes through here (index, map, ask, find, pack, graph,
+    schema), so an automatic rebuild behind `ctxp ask` or `ctxp map
+    --reindex` is just as visible as an explicit `ctxp index` -- never a
+    silent multi-second stall. Piped/Non-TTY sessions stay byte-identical.
+    """
     root = os.path.abspath(args.root)
     index_all = getattr(args, "index_all", None)
     default_skips = getattr(args, "default_skips", None)
     if index_all and default_skips:
         raise SystemExit("error: use either --index-all or --default-skips, not both")
     no_default_skips = True if index_all else (False if default_skips else None)
-    db = ensure_index(
-        root, args.db, force=args.reindex,
-        no_default_skips=no_default_skips,
-        extra_ignores=_split_skips(getattr(args, "skip", None)),
-        progress=progress,
-    )
+    prog = Progress()
+    prog.start()
+    try:
+        db = ensure_index(
+            root, args.db, force=args.reindex,
+            no_default_skips=no_default_skips,
+            extra_ignores=_split_skips(getattr(args, "skip", None)),
+            progress=prog.update if prog.enabled else None,
+        )
+    finally:
+        prog.finish()
     return root, db, connect(db)
 
 
 def cmd_index(args):
-    prog = Progress()
     t0 = time.perf_counter()
-    root, db, con = _open_db(args, progress=prog.update if prog.enabled else None)
+    root, db, con = _open_db(args)
     dt = time.perf_counter() - t0
     n = con.execute("SELECT COUNT(*) c FROM files").fetchone()["c"]
-    prog.finish()
     if color_enabled():
         print("%s%s%s%s%s%s%s" % (
             paint("\u2714", GREEN), paint(" Indexed ", WHITE),

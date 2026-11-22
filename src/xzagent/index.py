@@ -108,8 +108,7 @@ def build_index(root, db_path=None, no_default_skips=False, extra_ignores=None,
             "INSERT INTO content_fts VALUES (?,?,?)",
             (f.path, symbols_text, text[:CONTENT_INDEX_LIMIT]),
         )
-        if idx == total or idx % 50 == 0:
-            report(idx, total, "indexing")
+        report(idx, total, "indexing")
     report(0, 0, "resolving import/call graph")
     build_edges(con, root)
     from .schema import collect_db_schema

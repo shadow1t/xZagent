@@ -65,7 +65,7 @@ The index lives at `.xzagent/index.db` and refreshes automatically when files ch
 - 🗺️ **A repo map that scales**: every directory is always shown, only files per directory are capped, so a 3,000-file repo still renders a readable structure (`--full` for everything)
 - 🚀 **Fast**: indexed Flask's 227 files in **0.85 s** on a modest sandbox
 - 🕵️ **Private by design**: no network calls, no API keys, no telemetry. Ever. Works on air-gapped machines and planes
-- 🎨 **A real terminal experience**: violet→cyan gradient ranking bars in `ask`, and a live progress bar (spinner + counts + percent + phase notes) while indexing, so big repos never look stuck. Auto-disabled when piped, respects `NO_COLOR`
+- 🎨 **A real terminal experience**: violet→cyan gradient ranking bars in `ask`, and a live progress bar (spinner + counts + percent + phase notes) during ANY index build -- explicit or the automatic rebuild behind `ask`/`map`/`find` -- with a guaranteed-animation ticker so the CLI never looks stuck. Auto-disabled when piped, respects `NO_COLOR`
 - 🧰 **Zero dependencies**: pure Python 3.9+ standard library. `pip install` and done
 - 🐘 **DB-aware**: even skips `migrations/` while still feeding the `db_schema` tool with tables, columns and foreign keys
 

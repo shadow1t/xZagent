@@ -45,11 +45,14 @@ PowerShell, where options usually go at the end).
 
 On an interactive terminal the CLI is colored:
 
-- `ctxp index` renders a live one-line progress bar (spinner + violet→cyan
-  gradient) with `done/total` counts and a percent, plus phase notes
-  (`scanning files`, `indexing`, `resolving import/call graph`), so big repos
-  never look stuck. The line is erased before the final summary
-  (`✔ Indexed 227 files in 0.50s → .xzagent/index.db`).
+- EVERY command that needs to (re)build the index -- `index`, `map`, `ask`,
+  `find`, `pack`, `graph`, `schema`, whether by explicit `--reindex` or the
+  automatic rebuild after file changes -- renders a live one-line progress
+  bar: spinner + violet→cyan gradient + `done/total` counts + percent +
+  phase notes (`scanning files`, `indexing`, `resolving import/call graph`).
+  A tiny background ticker keeps the spinner breathing during slow phases
+  too, so the CLI never looks frozen; the line is erased before the result
+  (`✔ Indexed 227 files in 0.50s → .xzagent/index.db`, `Wrote map.md`).
 - `ctxp ask` prints a `✔ N most relevant files (out of TOTAL)` header followed
   by rows: a cyan rank number, the bold path, a violet→cyan gradient line bar
   (`━━━━━╸╌╌╌╌╌`, Rust-style rounded head, dotted gray track) showing the

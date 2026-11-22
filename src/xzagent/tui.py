@@ -10,6 +10,7 @@ always produced.
 import os
 import re
 import sys
+import threading
 import time
 
 VIOLET = (139, 92, 246)   # #8b5cf6
@@ -145,11 +146,16 @@ class Progress:
     Streams stay clean: writes go to stderr, so piped stdout output (scripts,
     tests, MCP, `ctxp ask | grep`) is byte-for-byte what it always was.
     Silent entirely when stderr is not a TTY.
+
+    A tiny daemon ticker keeps the spinner breathing while work is in
+    flight, so the CLI never looks frozen even if a single huge file or a
+    slow phase produces no callback events for a while.
     """
 
-    def __init__(self, stream=None, min_interval=0.04):
+    def __init__(self, stream=None, min_interval=0.05, tick=0.1):
         self.stream = stream if stream is not None else sys.stderr
         self.min_interval = min_interval
+        self.tick = tick
         self.colors = color_enabled(self.stream)
         try:
             self.enabled = bool(self.stream.isatty())
@@ -157,19 +163,64 @@ class Progress:
             self.enabled = False
         self._frame = 0
         self._last = 0.0
-        self._note = None
+        self._state = None          # (done, total, note)
         self._vlen = 0
+        self._drawn = False
+        self._lock = threading.Lock()
+        self._stop = None
+        self._thread = None
 
     def update(self, done, total, note=None):
-        """Done==total==0 (or total falsy) -> indeterminate spinner for `note`."""
+        """Report progress; safe to call for every single file (throttled).
+
+        total==0 (falsy) means an indeterminate phase: the title is the note.
+        """
         if not self.enabled:
             return
+        with self._lock:
+            self._state = (done, total, note)
+            self._maybe_draw()
+
+    def start(self):
+        """Launch the guaranteed-animation ticker thread (idempotent)."""
+        if not self.enabled or self._thread is not None:
+            return
+        self._stop = threading.Event()
+
+        def loop():
+            while not self._stop.wait(self.tick):
+                with self._lock:
+                    if self._state is not None:
+                        self._maybe_draw(force=True)
+
+        t = threading.Thread(target=loop, daemon=True)
+        t.start()
+        self._thread = t
+
+    def finish(self):
+        """Stop the ticker and erase the progress line (no-op if never drawn)."""
+        if self._thread is not None:
+            self._stop.set()
+            self._thread.join(timeout=1.0)
+            self._thread = None
+        with self._lock:
+            if self.enabled and self._drawn:
+                try:
+                    self.stream.write("\r" + _ERASE + " " * self._vlen + "\r" + _ERASE)
+                    self.stream.flush()
+                except Exception:
+                    pass
+            self._drawn = False
+            self._state = None
+            self._vlen = 0
+
+    def _maybe_draw(self, force=False):
         now = time.monotonic()
-        if (note == self._note and done < total
-                and now - self._last < self.min_interval):
+        if not force and now - self._last < self.min_interval:
             return
         self._last = now
         self._frame = (self._frame + 1) % len(_SPINNER)
+        done, total, note = self._state
         if not total:
             line = "  %s %s ..." % (_SPINNER[self._frame], note or "working")
         else:
@@ -177,19 +228,11 @@ class Progress:
             line = "  %s %s %5d/%d  %s %3d%%" % (
                 _SPINNER[self._frame], note or "indexing", done, total,
                 bar(done / float(total), 18, colored=self.colors), pct)
-        self._draw(line)
-
-    def _draw(self, line):
         pad = " " * max(self._vlen - visible_len(line), 0)
-        self.stream.write("\r" + _ERASE + line + pad)
-        self.stream.flush()
+        try:
+            self.stream.write("\r" + _ERASE + line + pad)
+            self.stream.flush()
+        except Exception:
+            pass
         self._vlen = visible_len(line)
-
-    def finish(self):
-        """Erase the progress line so the final summary starts clean."""
-        if not self.enabled:
-            return
-        self.stream.write("\r" + _ERASE + " " * self._vlen + "\r" + _ERASE)
-        self.stream.flush()
-        self._vlen = 0
-        self._note = None
+        self._drawn = True
