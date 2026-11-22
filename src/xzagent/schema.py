@@ -256,6 +256,31 @@ function proj(n){
   const R=300, f=2.2/(2.2-z);
   return {x:x*R*f, y:y*R*f, z, f};
 }
+// original sphere positions, so focus mode can go back to the planet
+const sph={}; nodes.forEach(function(n){sph[n.key]=[n.sx,n.sy,n.sz];});
+function restoreSphere(){ nodes.forEach(function(n){var o=sph[n.key]; if(o){n.sx=o[0]; n.sy=o[1]; n.sz=o[2];}}); }
+// FOCUS LAYOUT: related tables of one database sit NEXT TO EACH OTHER
+// on the sphere (data order), so isolating them left a tight clump of
+// overlapping circles. With a selection the hub goes to the center and
+// its relations spread on a sunflower disc, all facing the camera.
+function focusLayout(centerKey){
+  const c=byKey[centerKey]; if(!c) return;
+  const vis=nodes.filter(function(n){
+    return n!==c && !disabledSources.has(n.source) && !hiddenKeys.has(n.key);
+  }).sort(function(a,b){return a.name<b.name?-1:a.name>b.name?1:0;});
+  const N=vis.length, GA=Math.PI*(1+Math.sqrt(5)), start=-Math.PI/2, FZ=0.4;
+  c.sx=0; c.sy=0; c.sz=FZ;
+  vis.forEach(function(n,i){
+    const r=(N===1)?0.62:0.2+0.85*Math.sqrt((i+0.5)/N);
+    const a=start+GA*i;
+    n.sx=r*Math.cos(a); n.sy=r*Math.sin(a); n.sz=FZ;
+  });
+  // face the disc to the camera and fit the cluster into the viewport
+  rot={rx:0,ry:0}; pan={x:0,y:0};
+  const W=svg.clientWidth||800, H=svg.clientHeight||420;
+  const ext=300*(2.2/(2.2-FZ))*(0.2+0.85+0.35);
+  zoom=Math.max(.4, Math.min(4, 0.88*Math.min(W,H)/(2*ext)));
+}
 // zoom/pan only rewrite the viewBox: no rebuild, instant at any db size
 function updateViewBox(){
   const W=svg.clientWidth||800, H=svg.clientHeight||420;
@@ -445,6 +470,7 @@ function select(key){
   const near = new Set([key]);
   links.forEach(function(l){ if(l.s.key===key) near.add(l.t.key); if(l.t.key===key) near.add(l.s.key); });
   hiddenKeys = new Set(nodes.map(function(n){return n.key;}).filter(function(x){return !near.has(x);}));
+  focusLayout(key);
   drawGraph();
   edgeEls.forEach(function(o){ if(!(o.l.s.key===key||o.l.t.key===key)) o.e.style.display='none'; });
 }
@@ -533,6 +559,7 @@ document.getElementById('vLabels').onclick=function(e){
   drawGraph();
 };
 function resetGraph(){
+  restoreSphere();
   hiddenKeys = new Set(); selectedKey = null; disabledSources = new Set(); soloSource = null;
   buildLegend(); buildSide(document.getElementById('q').value.toLowerCase()); buildCards(document.getElementById('q').value.toLowerCase());
   drawGraph();

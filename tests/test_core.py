@@ -171,6 +171,8 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("updateViewBox", html)   # instant zoom/pan, no rebuild
         self.assertIn("pairOf", html)           # duplicate fk lines merged per pair
         self.assertIn("marker-end", html)       # direction arrowheads on hot edges
+        self.assertIn("focusLayout", html)       # hub-centered star layout on select
+        self.assertIn("restoreSphere", html)     # back to planet positions on reset
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows
