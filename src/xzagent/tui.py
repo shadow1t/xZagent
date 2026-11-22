@@ -96,6 +96,42 @@ def visible_len(text):
     return len(_ANSI_RE.sub("", text))
 
 
+def display_width(text):
+    """Printed width ignoring ANSI escapes; East-Asian chars count as 2 cells."""
+    import unicodedata
+    w = 0
+    for ch in _ANSI_RE.sub("", text):
+        w += 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+    return w
+
+
+def pad_to(text, width):
+    """Left-aligned text padded to a display width (ANSI-aware)."""
+    return text + " " * max(width - display_width(text), 0)
+
+
+def clip_right(text, width):
+    """Truncate the tail of text with a visible ellipsis to fit `width` cells."""
+    import unicodedata
+    if display_width(text) <= width:
+        return text
+    out, w = [], 0
+    for ch in text:
+        cw = 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+        if w + cw > width - 1:
+            break
+        out.append(ch)
+        w += cw
+    return "".join(out) + "\u2026"
+
+
+def clip_left(text, width):
+    """Keep the tail of text (long file paths), prefix a visible ellipsis."""
+    if display_width(text) <= width:
+        return text
+    return "\u2026" + text[len(text) - (width - 1):]
+
+
 class Progress:
     """Live one-line progress/spinner on ttys, drawn on stderr.
 

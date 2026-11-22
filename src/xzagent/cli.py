@@ -95,16 +95,27 @@ def cmd_ask(args):
         print("%s%s" % (
             paint("\u2714 %d most relevant files" % len(ranked), GREEN, bold=True),
             paint(" (out of %d)" % total_files, GRAY)))
-        path_w = max(len(p) for p, _s, _r in ranked)
+        import shutil
+
+        from .tui import clip_left, clip_right, display_width, pad_to
+        cols = max((shutil.get_terminal_size().columns or 80) - 1, 40)
+        bar_w = 12
+        path_w = min(max(display_width(p) for p, _s, _r in ranked),
+                     max(20, cols - bar_w - 24))
         hi, lo = ranked[0][1], ranked[-1][1]
         span = (hi - lo) or 1.0
         for i, (path, score, reasons) in enumerate(ranked, 1):
             frac = (score - lo) / span if len(ranked) > 1 else 1.0
             frac = max(frac, 0.08)
-            print("%s%s%s%s  %s" % (
+            fixed = 4 + path_w + 2 + bar_w
+            tail = ""
+            avail = cols - fixed - 2
+            if avail >= 8:
+                tail = paint("  " + clip_right(", ".join(reasons[:3]), avail), GRAY)
+            print("%s%s%s%s%s%s" % (
                 paint("%2d" % i, CYAN, bold=True), paint("  ", WHITE),
-                paint(path.ljust(path_w), WHITE, bold=True), bar(frac, 12),
-                paint(", ".join(reasons[:3]), GRAY)))
+                pad_to(paint(clip_left(path, path_w), WHITE, bold=True), path_w),
+                paint("  ", WHITE), bar(frac, bar_w), tail))
     else:
         for path, score, reasons in ranked:
             print("%.2f  %s  (%s)" % (score, path, ", ".join(reasons[:3])))

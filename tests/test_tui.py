@@ -4,7 +4,7 @@ import unittest
 from contextlib import redirect_stdout
 
 from xzagent.cli import main
-from xzagent.tui import CYAN, VIOLET, Progress, bar, color_enabled, gradient_rgb, paint, visible_len
+from xzagent.tui import CYAN, VIOLET, Progress, bar, clip_left, clip_right, color_enabled, display_width, gradient_rgb, paint, pad_to, visible_len
 
 from tests.helpers import make_sample_project  # noqa: F401  (sets sys.path)
 
@@ -39,6 +39,22 @@ class TestBarBasics(unittest.TestCase):
         self.assertIn("abc", s)
         self.assertTrue(s.endswith("\x1b[0m"))
         self.assertEqual(visible_len(s), 3)
+
+    def test_display_width_counts_wide_chars_and_skips_ansi(self):
+        self.assertEqual(display_width("abc"), 3)
+        self.assertEqual(display_width("\u4ee3\u7801"), 4)  # 2 CJK chars = 4 cells
+        self.assertEqual(display_width(paint("ab", CYAN)), 2)
+
+    def test_clip_right_ellipsizes(self):
+        self.assertEqual(clip_right("abcdefgh", 5), "abcd\u2026")
+        self.assertEqual(clip_right("short", 10), "short")
+
+    def test_clip_left_keeps_tail(self):
+        self.assertEqual(clip_left("really/long/path/file.py", 14), "\u2026/path/file.py")
+
+    def test_pad_to_respects_colored_text(self):
+        self.assertEqual(pad_to(paint("ab", CYAN), 5).replace("\x1b[0m", ""),
+                        paint("ab", CYAN).replace("\x1b[0m", "") + "   ")
 
 
 class _FakeTty(object):
@@ -144,6 +160,18 @@ class TestColorEnvAndCliModes(unittest.TestCase):
         rc, out = self._run(["--db", self.db, "find", self.root, "auth*"])
         self.assertEqual(rc, 0)
         self.assertIn("app/auth.py", out.replace("\x1b[0m", ""))
+
+    def test_ask_rows_fit_narrow_terminal(self):
+        self._run(["--db", self.db, "index", self.root])
+        os.environ["FORCE_COLOR"] = "1"
+        os.environ["COLUMNS"] = "70"  # narrow: reasons must clip, rows must not wrap
+        rc, out = self._run(["--db", self.db, "ask", self.root, "login", "--top", "3"])
+        self.assertEqual(rc, 0)
+        from xzagent.tui import display_width
+        for line in out.splitlines():
+            self.assertLessEqual(display_width(line), 70,
+                                 "row wider than terminal: %r" % line)
+        self.assertIn("\u2588", out)  # bars still present
 
 
 if __name__ == "__main__":
