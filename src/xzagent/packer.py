@@ -30,7 +30,7 @@ def build_pack(con, root, query, top_k=8, max_chars_per_file=4000):
     lines.append("")
     lines.append("## Repo map")
     lines.append("```")
-    lines.append(repo_map(con).rstrip())
+    lines.append(repo_map(con, max_per_dir=8, include_files_list=False).rstrip())
     lines.append("```")
     lines.append("")
     lines.append("## File excerpts")

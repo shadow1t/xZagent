@@ -13,8 +13,16 @@ PROTOCOL_VERSION = "2024-11-05"
 TOOLS = [
     {
         "name": "repo_map",
-        "description": "Compressed map of the whole project: file tree plus key symbols per file.",
-        "inputSchema": {"type": "object", "properties": {}},
+        "description": "Compressed map of the whole project: full directory tree (every directory shown, files capped per directory) plus optional per-file key symbols.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "per_dir": {"type": "integer", "default": 25,
+                            "description": "Max files shown per directory in the tree (0 = unlimited)"},
+                "files": {"type": "boolean", "default": False,
+                          "description": "Include the per-file detail list (large output for big projects)"},
+            },
+        },
     },
     {
         "name": "find_files",
@@ -107,7 +115,8 @@ class Server:
 
     def call(self, name, args):
         if name == "repo_map":
-            return repo_map(self.con)
+            per_dir = int(args.get("per_dir", 25) or 0) or None
+            return repo_map(self.con, max_per_dir=per_dir, include_files_list=bool(args.get("files", False)))
         if name == "find_files":
             ranked = rank_files(self.con, _arg(args, "task", "query"), top_k=int(args.get("top_k", 8)))
             return json.dumps(ranked, indent=2)

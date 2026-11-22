@@ -222,5 +222,40 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("Context Pack", pack)
 
 
+class TestMapLargeProject(unittest.TestCase):
+    """repo_map must show every directory regardless of project size."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = os.path.join(self.tmp.name, "big")
+        for d in ("ui/platform", "ui/pos", "srv"):
+            os.makedirs(os.path.join(self.root, d), exist_ok=True)
+            for i in range(60):
+                with open(os.path.join(self.root, d, "f%02d.tsx" % i), "w", encoding="utf-8") as fh:
+                    fh.write("export function F%d() {}\n" % i)
+        self.db = build_index(self.root)
+        self.con = connect(self.db)
+
+    def tearDown(self):
+        self.con.close()
+        self.tmp.cleanup()
+
+    def test_default_map_shows_every_dir_not_every_file(self):
+        m = repo_map(self.con)
+        for d in ("platform", "pos", "srv", "f00.tsx"):
+            self.assertIn(d, m)
+        self.assertIn("… (+35 more in this dir)", m)
+        self.assertNotIn("more files)", m)  # no global truncation marker
+
+    def test_unlimited_map_lists_every_file(self):
+        m = repo_map(self.con, max_per_dir=None)
+        self.assertIn("f59.tsx", m)
+        self.assertNotIn("… (+", m)
+
+    def test_per_dir_cap_listed_files_section(self):
+        m = repo_map(self.con, max_per_dir=5)
+        self.assertIn("… (+55 more in this dir)", m)
+
+
 if __name__ == "__main__":
     unittest.main()
