@@ -219,7 +219,7 @@ class TestWindowsHandoffAndChild(_TmpCfg):
                         side_effect=lambda a, **k: spawned.setdefault("argv", a)):
             rc, out = self._run_plain(["update"])
         self.assertEqual(rc, 0)
-        self.assertIn("Installing update", out)
+        self.assertIn("Update in progress", out)
         argv = spawned["argv"]
         self.assertEqual(argv[1:4], ["-m", "xzagent", "__update-child"])
         self.assertTrue(argv[4].startswith("git+"))
@@ -293,3 +293,48 @@ class TestRunWithDrivesProgressCallback(_TmpCfg):
         self.assertTrue(ok)
         self.assertIn("Already up to date.", out)
         self.assertEqual(notes, ["pulling latest changes"])
+
+class TestHandoffOverrideAndLabels(_TmpCfg):
+    @mock.patch("xzagent.selfupdate._run", _fake_run(0, "ok"))
+    def test_env_override_forces_handoff(self):
+        """XZAGENT_UPDATE_HANDOFF=1 exercises the Windows flow anywhere."""
+        self._chdir_tmp()
+        spawned = {}
+        with mock.patch.dict(os.environ,
+                             {"XZAGENT_UPDATE_HANDOFF": "1"}), \
+                mock.patch("xzagent.selfupdate.subprocess.Popen",
+                           side_effect=lambda a, **k:
+                           spawned.setdefault("argv", a)):
+            rc, out = self._run_plain(["update"])
+        self.assertEqual(rc, 0)
+        self.assertIn("Update in progress", out)
+        argv = spawned["argv"]
+        self.assertEqual(argv[1:4], ["-m", "xzagent", "__update-child"])
+        self.assertTrue(argv[4].startswith("git+"))  # spec
+        self.assertTrue(argv[5].isdigit())           # ppid
+        self.assertIn("main", argv[6])               # label
+
+    @mock.patch("xzagent.selfupdate._needs_handoff", return_value=False)
+    def test_child_report_uses_label(self, _h):
+        self._chdir_tmp()
+        with mock.patch("xzagent.selfupdate._run", _fake_run(0, "ok")), \
+                mock.patch("xzagent.selfupdate._installed_version",
+                           return_value="9.9.9"), \
+                mock.patch("xzagent.selfupdate._report",
+                           return_value=None) as rep:
+            rc = child_finish("/some/spec", "999999999", "mylabel")
+        self.assertEqual(rc, 0)
+        rep.assert_called_once()
+        self.assertEqual(rep.call_args[0][2], "mylabel")
+
+    def test_version_has_one_source_of_truth(self):
+        """pyproject reads the version from xzagent.__version__, so pip
+        wheels and `ctxp --version` can never disagree again."""
+        import xzagent
+        with open(os.path.join(os.path.dirname(xzagent.__file__), "..",
+                               "..", "pyproject.toml"),
+                  encoding="utf-8") as fh:
+            pp = fh.read()
+        self.assertIn('dynamic = ["version"]', pp)
+        self.assertIn('xzagent.__version__', pp)
+        self.assertNotIn('version = "0.', pp)

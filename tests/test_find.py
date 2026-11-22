@@ -513,3 +513,26 @@ class TestFindDiskFallback(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestDiskRowLanguageLabels(unittest.TestCase):
+    """Noise files have no indexer language: label them by extension."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = os.path.join(self.tmp.name, "labels")
+        os.makedirs(self.root)
+        for rel in ("tmp_shot.png", "tmp_data.dat", "tmp_readme.md",
+                    "tmp_build", "tmp_api.py"):
+            with open(os.path.join(self.root, rel), "w", encoding="utf-8") as fh:
+                fh.write("x\n")
+
+    def test_labels_come_from_extension(self):
+        from xzagent.find import find_on_disk
+        langs = {r["path"]: r["lang"]
+                 for r in find_on_disk(self.root, pattern="tmp_*")}
+        self.assertEqual(langs["tmp_shot.png"], "png")
+        self.assertEqual(langs["tmp_data.dat"], "dat")
+        self.assertEqual(langs["tmp_readme.md"], "markdown")
+        self.assertEqual(langs["tmp_build"], "file")
+        self.assertEqual(langs["tmp_api.py"], "python")

@@ -24,7 +24,7 @@ import sys
 import time
 
 from . import __version__
-from .tui import CYAN, GRAY, GREEN, WHITE, color_enabled, paint
+from .tui import CYAN, GRAY, GREEN, Progress, WHITE, color_enabled, paint
 
 DEFAULT_GIT_URL = "https://github.com/shadow1t/xZagent.git"
 PIP_ARGS = ("install", "--force-reinstall", "--no-deps", "--no-cache-dir")
@@ -109,7 +109,13 @@ def _run(cmd, note=None, progress=None):
 
 
 def _needs_handoff():
-    """True when the running console script would be locked during reinstall."""
+    """True when the running console script would be locked during reinstall.
+
+    XZAGENT_UPDATE_HANDOFF=1 forces the Windows-style handoff on any
+    platform so the flow can be exercised end to end in demos and tests.
+    """
+    if os.environ.get("XZAGENT_UPDATE_HANDOFF") == "1":
+        return True
     return os.name == "nt"
 
 
@@ -187,28 +193,35 @@ def selfupdate(path_arg=None, no_pull=False, progress=None):
             _fail("git pull failed in %s" % value, out)
             return 1
 
-    if progress is not None:
-        progress(0, 0, "installing via pip")
     if _needs_handoff():
         # Windows locks the running ctxp.exe: spawn a fresh interpreter,
-        # exit now, and let it reinstall + report once we are gone.
+        # exit now, and let it reinstall + report once we are gone. The
+        # child keeps the console alive with its own live progress line.
         child = [sys.executable, "-m", "xzagent", "__update-child", spec,
-                 str(os.getpid())]
+                 str(os.getpid()), label]
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         try:
-            subprocess.Popen(child, creationflags=flags)
+            if flags:  # Windows: new process group, immune to Ctrl+C noise
+                subprocess.Popen(child, creationflags=flags)
+            else:      # POSIX (env-override demos/tests): survive SIGHUP,
+                       # like a Windows child survives its parent exit
+                subprocess.Popen(child, start_new_session=True)
         except OSError as e:
             _fail("could not start the updater", str(e))
             return 1
+        if progress is not None:
+            progress(0, 0, "handing off to the updater")
         if color_enabled():
             print("%s%s%s%s" % (
-                paint("\u2714 ", GREEN), paint("Installing update", WHITE),
+                paint("\u2714 ", GREEN), paint("Update in progress", WHITE),
                 paint(" \u00b7 ", GRAY),
-                paint("it finishes right after this process exits", GRAY)))
+                paint("the result prints here in a few seconds", GRAY)))
         else:
-            print("Installing update (it finishes right after this process exits)")
+            print("Update in progress (the result prints here in a few seconds)")
         return 0
 
+    if progress is not None:
+        progress(0, 0, "installing via pip")
     rc, out = _run([sys.executable, "-m", "pip", *PIP_ARGS, spec])
     if rc != 0:
         _fail("pip install failed", out)
@@ -217,7 +230,7 @@ def selfupdate(path_arg=None, no_pull=False, progress=None):
     return 0
 
 
-def child_finish(spec, ppid):
+def child_finish(spec, ppid, label=None):
     """Runs in the handoff interpreter after the parent has exited."""
     for _ in range(240):  # wait up to one minute for the parent to die
         try:
@@ -225,9 +238,18 @@ def child_finish(spec, ppid):
         except (OSError, ValueError):
             break
         time.sleep(0.25)
-    rc, out = _run([sys.executable, "-m", "pip", *PIP_ARGS, spec])
+    # the install is the slow part: keep a live progress line going in the
+    # user's console, exactly like every other long ctxp phase
+    prog = Progress()
+    prog.start()
+    try:
+        rc, out = _run([sys.executable, "-m", "pip", *PIP_ARGS, spec],
+                       note="installing via pip",
+                       progress=prog.update if prog.enabled else None)
+    finally:
+        prog.finish()
     if rc != 0:
         _fail("pip install failed", out)
         return 1
-    _report(__version__, _installed_version(), spec)
+    _report(__version__, _installed_version(), label or spec)
     return 0

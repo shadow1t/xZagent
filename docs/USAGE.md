@@ -393,7 +393,8 @@ What it does:
    and reports the version jump: `✔ Updated xzagent 0.2.2 → 0.2.3`.
 4. On Windows the running `ctxp.exe` is file-locked, so the install is
    handed to a fresh interpreter that waits for the current one to exit,
-   reinstalls, and prints the result in the same console — one command,
+   reinstalls in the SAME console with a live progress line (exactly like
+   every other long ctxp phase), then prints the result. One command,
    nothing to uninstall by hand.
 
 The heavy step is silent unless it fails: then you get the last pip/git

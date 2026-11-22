@@ -496,10 +496,11 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
     # Hidden receiver of the Windows self-update handoff
-    # (python -m xzagent __update-child SPEC PPID): intentionally NOT an
-    # argparse subcommand, so it never appears in `ctxp -h`.
+    # (python -m xzagent __update-child SPEC PPID [LABEL]): intentionally
+    # NOT an argparse subcommand, so it never appears in `ctxp -h`.
     if len(argv) >= 3 and argv[0] == "__update-child":
-        return child_finish(argv[1], argv[2])
+        return child_finish(argv[1], argv[2],
+                            argv[3] if len(argv) > 3 else argv[1])
     args = build_parser().parse_args(_hoist_global_opts(argv))
     return args.func(args)
 

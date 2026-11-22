@@ -244,7 +244,9 @@ def find_on_disk(root, pattern=None, lang=None, ext=None, only_exts=None,
             rel = os.path.relpath(full, root).replace(os.sep, "/")
             if patterns and not glob_match(rel, patterns):
                 continue
-            f_lang = (lang_for(rel) or "text").lower()
+            f_lang = (lang_for(rel)
+                      or os.path.splitext(rel)[1].lstrip(".")[:6].lower()
+                      or "file")
             if langs and f_lang not in langs:
                 continue
             f_ext = os.path.splitext(rel)[1].lower()
@@ -264,7 +266,7 @@ def find_on_disk(root, pattern=None, lang=None, ext=None, only_exts=None,
                 continue
             results.append({
                 "path": rel,
-                "lang": lang_for(rel) or "text",
+                "lang": f_lang,
                 "ext": f_ext,
                 "mtime": st.st_mtime,
                 "modified": _modified_iso(st.st_mtime),
