@@ -344,9 +344,39 @@ MCP_GLOBAL_FILES = {
     # guaranteed project cwd, so their entries are always absolute,
     # and the server key is per-project (xzagent, xzagent_<folder>, ...)
     # so several projects can coexist in one file.
-    "antigravity": ".gemini/antigravity/mcp_config.json",
-    "windsurf": ".codeium/windsurf/mcp_config.json",
+    # Candidates are ordered CURRENT-FIRST: Antigravity moved its global
+    # config, so present builds read ~/.gemini/config/mcp_config.json
+    # while pre-migration installs still read ~/.gemini/antigravity/.
+    "antigravity": (".gemini/config/mcp_config.json",
+                    ".gemini/antigravity/mcp_config.json"),
+    "windsurf": (".codeium/windsurf/mcp_config.json",),
 }
+
+
+def _global_candidates(client):
+    """All possible global-config paths for this client, current-first."""
+    home = os.path.expanduser("~")
+    return [os.path.join(home, *rel.split("/"))
+            for rel in MCP_GLOBAL_FILES[client]]
+
+
+def _resolve_global_path(client):
+    """The global config file this machine's app ACTUALLY reads.
+
+    The directory that already exists is the one the installed app
+    created (a migrated Antigravity makes ~/.gemini/config/), so trust
+    it first. A lone file matches too (written on a clean machine).
+    Nothing anywhere? Default to the CURRENT path so a first run lands
+    where new builds look, never in the legacy location.
+    """
+    paths = _global_candidates(client)
+    for p in paths:
+        if os.path.isdir(os.path.dirname(p)):
+            return p
+    for p in paths:
+        if os.path.isfile(p):
+            return p
+    return paths[0]
 
 
 def _mcp_entry(root, absolute=False):
@@ -464,12 +494,24 @@ def cmd_setup(args):
             where = "project config"
             touched_project_cfg = True
         else:                              # global, machine-level client
-            home = os.path.expanduser("~")
-            rel = MCP_GLOBAL_FILES[client]
-            path = os.path.join(home, *rel.split("/"))
-            key = _global_server_key(_read_servers(path)[1], root)
-            path = _apply_mcp_config(path, _mcp_entry(root, absolute=True),
-                                     remove, key=key)
+            cands = _global_candidates(client)
+            if remove:
+                # clean the key from every place older ctxp may have
+                # written it (current AND legacy paths)
+                path = None
+                key = None
+                for p in cands:
+                    if not os.path.isfile(p):
+                        continue
+                    k = _global_server_key(_read_servers(p)[1], root)
+                    touched = _apply_mcp_config(p, None, True, key=k)
+                    if touched is not None and path is None:
+                        path, key = touched, k
+            else:
+                path = _resolve_global_path(client)
+                key = _global_server_key(_read_servers(path)[1], root)
+                path = _apply_mcp_config(path, _mcp_entry(root, absolute=True),
+                                         remove, key=key)
             show = path if path else None
             where = "global machine config \u00b7 never in a commit"
         if color_enabled():

@@ -328,12 +328,17 @@ One command, inside the project:
 ```bash
 ctxp setup --client antigravity     # also: --client windsurf
 ```
-This edits `%USERPROFILE%\.gemini\antigravity\mcp_config.json`
-(Windsurf: `~/.codeium/windsurf/mcp_config.json`) for you: an absolute
+This edits Antigravity's global config at
+`%USERPROFILE%\.gemini\config\mcp_config.json` (Google moved it there;
+pre-migration installs still read `%USERPROFILE%\.gemini\antigravity\mcp_config.json`,
+and `ctxp setup` picks whichever one your installed app actually uses)
+and Windsurf's at `~/.codeium/windsurf/mcp_config.json`: an absolute
 entry for this machine and THIS project, plus a per-project server key,
 so a second project in the same file becomes `xzagent_<folder>` instead
 of overwriting the first. These files are machine-global (not project
-files, never committed). Restart the app afterwards and the tools appear.
+files, never committed). Restart the app afterwards and the tools appear
+(Antigravity: Settings > Customizations > MCP Servers, or the `agy` CLI's
+`/mcp` panel).
 
 ## Multiple projects
 

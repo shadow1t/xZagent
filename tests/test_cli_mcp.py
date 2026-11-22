@@ -259,6 +259,10 @@ class TestSetupGlobalClients(unittest.TestCase):
         shutil.rmtree(self.home, ignore_errors=True)
 
     def _cfg_path(self):
+        return os.path.join(self.home, ".gemini", "config",
+                            "mcp_config.json")
+
+    def _legacy_cfg_path(self):
         return os.path.join(self.home, ".gemini", "antigravity",
                             "mcp_config.json")
 
@@ -291,6 +295,48 @@ class TestSetupGlobalClients(unittest.TestCase):
         self._run(["setup", self.projA, "--client", "antigravity"])
         with open(self._cfg_path(), encoding="utf-8") as fh:
             self.assertEqual(len(json.load(fh)["mcpServers"]), 2)
+
+    def test_fresh_machine_writes_current_path_only(self):
+        rc, out = self._run(["setup", self.projA, "--client", "antigravity"])
+        self.assertEqual(rc, 0)
+        self.assertTrue(os.path.isfile(self._cfg_path()))
+        self.assertFalse(os.path.isfile(self._legacy_cfg_path()))
+
+    def test_migrated_machine_prefers_current_over_legacy(self):
+        # a migrated app made ~/.gemini/config/, but old ctxp left a
+        # file in the legacy spot: the NEW path must win
+        os.makedirs(os.path.dirname(self._cfg_path()), exist_ok=True)
+        os.makedirs(os.path.dirname(self._legacy_cfg_path()), exist_ok=True)
+        with open(self._legacy_cfg_path(), "w", encoding="utf-8") as fh:
+            json.dump({"mcpServers": {"xzagent": {"command": "ctxp",
+                                                  "args": ["serve", self.projA]}}},
+                      fh)
+        self._run(["setup", self.projA, "--client", "antigravity"])
+        self.assertTrue(os.path.isfile(self._cfg_path()))
+        with open(self._cfg_path(), encoding="utf-8") as fh:
+            self.assertIn("xzagent", json.load(fh)["mcpServers"])
+        # legacy file untouched by the ADD (cleaned only via --remove)
+        with open(self._legacy_cfg_path(), encoding="utf-8") as fh:
+            self.assertEqual(len(json.load(fh)["mcpServers"]), 1)
+
+    def test_old_install_still_on_legacy_path_writes_there(self):
+        os.makedirs(os.path.dirname(self._legacy_cfg_path()), exist_ok=True)
+        rc, out = self._run(["setup", self.projA, "--client", "antigravity"])
+        self.assertEqual(rc, 0)
+        self.assertFalse(os.path.isfile(self._cfg_path()))
+        self.assertTrue(os.path.isfile(self._legacy_cfg_path()))
+
+    def test_remove_also_cleans_legacy_location(self):
+        # simulate an old ctxp write into the legacy path
+        os.makedirs(os.path.dirname(self._legacy_cfg_path()), exist_ok=True)
+        with open(self._legacy_cfg_path(), "w", encoding="utf-8") as fh:
+            json.dump({"mcpServers": {
+                "xzagent": {"command": "ctxp",
+                            "args": ["serve", os.path.abspath(self.projA)]}}}, fh)
+        rc, out = self._run(["setup", self.projA, "--client", "antigravity",
+                             "--remove"])
+        self.assertEqual(rc, 0)
+        self.assertFalse(os.path.isfile(self._legacy_cfg_path()))
 
     def test_remove_takes_only_this_project_out(self):
         self._run(["setup", self.projA, "--client", "antigravity"])
