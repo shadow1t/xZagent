@@ -11,25 +11,26 @@ from tests.helpers import make_sample_project  # noqa: F401  (sets sys.path)
 
 class TestBarBasics(unittest.TestCase):
     def test_plain_bar_fill_widths(self):
-        self.assertEqual(bar(0.0, 4, colored=False), "\u2591" * 4)
-        self.assertEqual(bar(1.0, 4, colored=False), "\u2588" * 4)
-        self.assertEqual(bar(0.5, 4, colored=False), "\u2588" * 2 + "\u2591" * 2)
-        self.assertEqual(bar(0.75, 4, colored=False), "\u2588" * 3 + "\u2591")
+        self.assertEqual(bar(0.0, 4, colored=False), "\u254c" * 4)
+        self.assertEqual(bar(1.0, 4, colored=False), "\u2501\u2501\u2501\u2578")
+        self.assertEqual(bar(0.5, 4, colored=False), "\u2501\u2578" + "\u254c" * 2)
+        self.assertEqual(bar(0.75, 4, colored=False), "\u2501" * 2 + "\u2578" + "\u254c")
 
     def test_plain_bar_clamps(self):
-        self.assertEqual(bar(-1.0, 3, colored=False), "\u2591" * 3)
-        self.assertEqual(bar(2.0, 3, colored=False), "\u2588" * 3)
+        self.assertEqual(bar(-1.0, 3, colored=False), "\u254c" * 3)
+        self.assertEqual(bar(2.0, 3, colored=False), "\u2501\u2501\u2578")
 
 
     def test_track_cells_use_visible_gray(self):
         s = bar(0.0, 4, colored=True)
         self.assertIn("38;2;61;68;89", s)   # visible on darwest backgrounds
 
-    def test_colored_bar_has_ansi_and_blocks(self):
+    def test_colored_bar_has_ansi_and_cells(self):
         s = bar(1.0, 6, colored=True)
         self.assertIn("\x1b[38;2;", s)
-        self.assertEqual(s.count("\u2588"), 6)
-        self.assertNotIn("\u2591", s)
+        self.assertEqual(s.count("\u2501"), 5)      # filled line cells
+        self.assertEqual(s.count("\u2578"), 1)     # rounded head
+        self.assertNotIn("\u254c", s)              # no track when full
 
     def test_gradient_endpoints(self):
         self.assertEqual(gradient_rgb(0.0), VIOLET)
@@ -98,7 +99,7 @@ class TestProgress(unittest.TestCase):
             out = "".join(ttyp.chunks)
             self.assertIn("3/10", out)
             self.assertIn("30%", out)
-            self.assertIn("\u2588", out)  # gradient bar present
+            self.assertIn("\u2501", out)  # gradient line bar present
             self.assertIn("\r", out)      # redraws on the same line
             p.finish()
             out2 = "".join(ttyp.chunks)
@@ -156,7 +157,7 @@ class TestColorEnvAndCliModes(unittest.TestCase):
         rc, out = self._run(["--db", self.db, "ask", self.root, "login", "--top", "3"])
         self.assertEqual(rc, 0)
         self.assertIn("app/auth.py", out)
-        self.assertIn("\u2588", out)          # ranking bar blocks in the rows
+        self.assertIn("\u2501", out)         # ranking bars in the rows
         self.assertIn("\x1b[38;2;", out)      # truecolor escape present
 
     def test_forced_color_find_keeps_data(self):
@@ -176,7 +177,7 @@ class TestColorEnvAndCliModes(unittest.TestCase):
         for line in out.splitlines():
             self.assertLessEqual(display_width(line), 70,
                                  "row wider than terminal: %r" % line)
-        self.assertIn("\u2588", out)  # bars still present
+        self.assertIn("\u2501", out)  # bars still present
 
 
 if __name__ == "__main__":

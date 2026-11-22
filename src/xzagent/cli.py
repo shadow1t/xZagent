@@ -10,6 +10,7 @@ from .index import connect, default_db_path, ensure_index
 from .map import repo_map
 from .packer import build_pack
 from .rank import rank_files
+from . import __version__
 from .tui import BLUE, CYAN, GRAY, GREEN, VIOLET, WHITE, Progress, bar, color_enabled, paint
 
 
@@ -275,6 +276,7 @@ def build_parser():
             "existing indexes and never rebuild them."
         ),
     )
+    p.add_argument("--version", action="version", version="xzagent " + __version__)
     p.add_argument("--db", default=None, help="Index DB path (default: <root>/.xzagent/index.db)")
     p.add_argument("--reindex", action="store_true", help="Rebuild the index even if it exists")
     p.add_argument("--index-all", action="store_true", default=None,

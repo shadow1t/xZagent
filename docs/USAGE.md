@@ -51,8 +51,9 @@ On an interactive terminal the CLI is colored:
   never look stuck. The line is erased before the final summary
   (`✔ Indexed 227 files in 0.50s → .xzagent/index.db`).
 - `ctxp ask` prints a `✔ N most relevant files (out of TOTAL)` header followed
-  by rows: a cyan rank number, the bold path, a violet→cyan gradient bar
-  showing the relative score of each hit, and its ranking reasons in gray.
+  by rows: a cyan rank number, the bold path, a violet→cyan gradient line bar
+  (`━━━━━╸╌╌╌╌╌`, Rust-style rounded head, dotted gray track) showing the
+  relative score of each hit, and its ranking reasons in gray.
   Rows are layout-aware and never wrap: bars always line up in one column,
   long paths clip from the left (`…le/auth.py`) and reasons clip to the
   terminal width, so narrow windows stay as clean as wide ones.

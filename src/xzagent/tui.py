@@ -74,20 +74,27 @@ def gradient_rgb(t):
 
 
 def bar(frac, width=12, colored=True):
-    """Ranking bar: filled cells run violet -> cyan, empty cells are dark.
+    """Rounded line bar in the modern Rust/indicatif style.
 
-    bar(1.0, 4, False) == '████', bar(0.5, 4, False) == '██░░'.
+    bar(1.0, 4, False) == '━━━╸', bar(0.5, 4, False) == '━╸╌╌': filled
+    cells run the violet -> cyan gradient and end in a rounded head '\u2578',
+    the remainder of the bar is a dotted track '\u254c' in dim gray, so the
+    full column width is always visible on any dark background.
     """
     frac = 0.0 if frac < 0.0 else (1.0 if frac > 1.0 else frac)
-    filled = int(round(width * frac))
+    filled = max(0, min(width, int(round(width * frac))))
     if not colored:
-        return "\u2588" * filled + "\u2591" * (width - filled)
+        if filled <= 0:
+            return "\u254c" * width
+        return "\u2501" * (filled - 1) + "\u2578" + "\u254c" * (width - filled)
     out = []
     for i in range(width):
         if i < filled:
-            out.append(paint("\u2588", gradient_rgb(i / float(width - 1)) if width > 1 else VIOLET))
+            ch = "\u2578" if i == filled - 1 else "\u2501"
+            rgb = gradient_rgb(i / float(width - 1)) if width > 1 else VIOLET
+            out.append(paint(ch, rgb))
         else:
-            out.append(paint("\u2591", TRACK))
+            out.append(paint("\u254c", TRACK))
     return "".join(out)
 
 
