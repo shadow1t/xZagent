@@ -57,7 +57,7 @@ class TestCli(unittest.TestCase):
             body = fh.read()
         self.assertIn("alpha_users", body)
         self.assertNotIn("alien_customers", body)
-        self.assertNotIn("__DATA__", body)
+        self.assertNotIn("INJECTED_DATA = null", body)  # data sealed in
 
     def test_index_map_ask_pack(self):
         rc, out = self._run(["--db", self.db, "index", self.root])

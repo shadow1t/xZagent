@@ -179,11 +179,14 @@ class TestIndexRankGraph(unittest.TestCase):
                      {"column": "author_id", "ref_table": "users"}]},
         ]
         html = schema_html(rows)
-        self.assertNotIn("__DATA__", html)
+        # data is sealed into the INJECTED_DATA line (the design's own
+        # "__DATA__" comment text stays in the shipped template)
+        self.assertNotIn("INJECTED_DATA = null", html)
+        self.assertIn("INJECTED_DATA = [", html)
         self.assertIn('id="legend"', html)
         self.assertIn("app.db", html)
         self.assertIn("shop.sqlite", html)
-        self.assertIn("across databases", html)  # cross-db fk notice
+        self.assertIn("cross-db FK", html)  # cross-db fk notice
         # HTML-escaping helper ships in the template (names are injected raw)
         self.assertIn("function esc(", html)
         # sidebar group folding: open-all/close-all + collapsed by default
