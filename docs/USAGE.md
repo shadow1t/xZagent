@@ -293,6 +293,44 @@ ctxp map . --full -o map.md       # every file, no capping
 
 ## MCP setup (AI apps)
 
+### How the connection actually works
+
+MCP over stdio is deliberately boring: no ports, no server machine, no
+daemon running between sessions. When a client (Claude Code, Cursor,
+Codex, ...) starts working in your project, it reads its own config
+file, finds the `xzagent` entry there, and launches `ctxp serve <root>`
+as a plain child process. The two then speak JSON-RPC over the child's
+stdin/stdout: ctxp announces its 9 tools (`repo_map`, `find`,
+`find_files`, `recent_files`, `file_outline`, `call_graph`,
+`neighbors`, `context_pack`, `db_schema`), the agent calls a tool, ctxp
+answers from the project's index, and that is the whole magic. When the
+client exits, ctxp exits with it, and nothing keeps running afterwards.
+
+So "connecting" a client means exactly one thing: writing one small
+entry into the config file that client already reads. `ctxp setup`
+writes it for the supported clients; the table below is the same thing
+done by hand, for any client:
+
+| Client | The file it reads | What the entry looks like |
+|---|---|---|
+| Claude Code | `<project>/.mcp.json` (committed) or `~/.claude.json` | JSON `mcpServers` block |
+| Cursor | `<project>/.cursor/mcp.json` | JSON `mcpServers` block |
+| Antigravity | `~/.gemini/config/mcp_config.json` (pre-migration: `~/.gemini/antigravity/mcp_config.json`) | JSON `mcpServers` block, absolute paths |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` | JSON `mcpServers` block, absolute paths |
+| Codex | `~/.codex/config.toml` (project scope: `.codex/config.toml`) | TOML `[mcp_servers.xzagent]` table (see below) |
+| anything else | wherever it keeps its MCP config | JSON `mcpServers` block (see `ctxp setup --client generic`) |
+
+Two flavors of the same entry:
+
+- **portable** (the default for project configs): `ctxp serve .` with
+  no machine-specific paths. Works because project-scoped clients
+  launch the server with cwd = project root. Safe to commit; anyone
+  with ctxp installed gets working tools.
+- **absolute** (`ctxp setup --absolute`, and always for machine-global
+  clients like Antigravity/Windsurf/Codex): `ctxp serve /this/machine/path`.
+  Needed when the client does not launch the server from the project
+  directory. Never commit that flavor.
+
 ### One command, inside the project (recommended)
 ```bash
 ctxp setup              # writes .mcp.json (Claude Code) + .cursor/mcp.json
@@ -329,6 +367,47 @@ or edit `~/.claude.json`:
 }
 ```
 Verify inside Claude Code with `/mcp`.
+
+### Codex CLI
+
+Codex keeps its servers in a TOML file (not JSON), so `ctxp setup` does
+not edit it; one command wires it up instead (user scope, all projects):
+
+```bash
+codex mcp add xzagent -- ctxp serve /absolute/path/to/project
+```
+
+which writes this into `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.xzagent]
+command = "ctxp"
+args = ["serve", "/absolute/path/to/project"]
+```
+
+A second project needs its own key in the same file (Codex does not
+namespace per project):
+
+```toml
+[mcp_servers.xzagent_billing_app]
+command = "ctxp"
+args = ["serve", "/absolute/path/to/billing_app"]
+```
+
+Or keep it per-project, portable and committed: create
+`.codex/config.toml` in the repo root (Codex loads it for trusted
+projects) with the portable form:
+
+```toml
+[mcp_servers.xzagent]
+command = "ctxp"
+args = ["serve", "."]
+```
+
+`.` resolves to wherever you launched codex from, so it works when you
+start codex at the project root (the usual way).
+
+Verify inside Codex with `/mcp`; undo with `codex mcp remove xzagent`.
 
 ### Cursor / Windsurf / generic stdio config
 Same `mcpServers` block:

@@ -76,7 +76,7 @@ The index lives at `.xzagent/index.db` and refreshes automatically when files ch
 
 ## Features
 
-- 🔌 **Works with Claude Code, Cursor, Windsurf and any MCP client** via a stdio MCP server exposing 9 tools (`repo_map`, `find`, `find_files`, `recent_files`, `file_outline`, `call_graph`, `neighbors`, `context_pack`, `db_schema`)
+- 🔌 **Works with Claude Code, Cursor, Codex, Antigravity, Windsurf and any MCP client** via a stdio MCP server exposing 9 tools (`repo_map`, `find`, `find_files`, `recent_files`, `file_outline`, `call_graph`, `neighbors`, `context_pack`, `db_schema`)
 - 🎯 **Smart targeting filters** so the agent works on `api_v2*` instead of every API file across versions, drops test-file hijackers with `--no-tests`, restricts ranking to real code with `--only-ext .py`, or to whole areas with `--only-dirs api,ui`. A pattern search also globs the disk directly, so even noise-skipped temp files (`tmp_*`) are found when you explicitly name them
 - 🗺️ **A repo map that scales**: every directory is always shown, only files per directory are capped, so a 3,000-file repo still renders a readable structure (`--full` for everything)
 - 🚀 **Fast**: indexed Flask's 227 files in **0.7 s** on a modest sandbox
@@ -149,11 +149,23 @@ The config lives INSIDE the project and is **portable by default**: `ctxp serve 
 
 Whole-machine clients are one command too: `ctxp setup --client antigravity` (and `--client windsurf`) edits the app's GLOBAL config for you, with an absolute entry for this project and a per-project server key so several projects can coexist in one file. `ctxp setup --client generic` prints a ready-to-paste snippet for any other stdio client, and `ctxp setup --remove` takes the server back out cleanly. `ctxp setup --absolute` pins your machine's paths instead of the portable form, for clients that launch servers from an odd working directory; that flavor never goes in a commit.
 
-<details><summary>Manual configs (user scope, multiple projects)</summary>
+<details><summary>Manual configs (user scope, multiple projects, any client)</summary>
+
+The whole connection is one entry in the file the client already reads
+(stdio JSON-RPC child process, no daemon, nothing keeps running after
+the client exits). Claude Code:
 
 ```bash
 claude mcp add xzagent -- ctxp serve /path/to/project
 ```
+
+Codex (it keeps servers in TOML):
+
+```bash
+codex mcp add xzagent -- ctxp serve /absolute/path/to/project
+```
+
+Cursor / Windsurf / any JSON `mcpServers` client:
 
 ```json
 {
@@ -162,6 +174,10 @@ claude mcp add xzagent -- ctxp serve /path/to/project
   }
 }
 ```
+
+Antigravity: `ctxp setup --client antigravity` edits its global config
+itself (absolute entry, per-project key, several projects coexist).
+Exact per-client recipes: [docs/USAGE.md · MCP setup](docs/USAGE.md).
 </details>
 
 From that moment the agent asks for the map instead of wandering, greps your indexed shortlist instead of grepping the whole disk, and checks the call graph before refactoring.
