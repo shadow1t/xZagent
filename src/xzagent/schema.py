@@ -3260,7 +3260,12 @@ CREATE TABLE projects (
           const isNearInSphere = sphereNearSet ? sphereNearSet.has(n.key) : false;
           if (!isSel && !isHover && !it.matches && !isFocused && !isNearInSphere) {
             if (labelMode === 'off') continue;
-            if (labelMode === 'smart' && it.z < 0.2) continue;
+            // Smart in the 3D Sphere is context-only too (the exact twin of
+            // the galaxy/focus rule): with a highlighted table only its FK
+            // family + search matches get names; with nothing selected only
+            // search matches. Browsing the whole sphere with every name in
+            // view is what Dense is for
+            if (labelMode === 'smart' && !it.matches && !isNearInSphere) continue;
           }
           candidates.push({
             it: it,
@@ -3284,8 +3289,30 @@ CREATE TABLE projects (
           const ly = it.sy - it.r - 6;
 
           if (placer(it.sx, ly, estW, fSize + 3, force)) {
-            ctx.globalAlpha = force ? 1 : (isFocused ? n.alpha : (isNearInSphere ? 0.96 : Math.max(0.45, (it.z + 1) * 0.55)));
-            drawLabelPill(txt, it.sx, ly, isSel ? '#ffedd5' : (isNearInSphere ? '#fde68a' : (it.matches ? '#67e8f9' : '#f1f5f9')), fSize, isSel || isHover);
+            // Same pill language as the galaxy: selected = orange capsule,
+            // FK family = amber, search matches = cyan; Dense-only unrelated
+            // names recede as dim slate instead of a wall of white text
+            const ctxPill = isSel || isNearInSphere || it.matches;
+            ctx.globalAlpha = force ? 1
+              : (isFocused ? n.alpha
+                : (ctxPill ? 0.96
+                  : (labelMode === 'all' ? (0.4 + 0.35 * Math.max(0, (it.z + 1) * 0.5)) : Math.max(0.45, (it.z + 1) * 0.55))));
+            if (ctxPill) {
+              const pillBg = isSel ? 'rgba(249, 115, 22, 0.16)'
+                : (isNearInSphere ? 'rgba(251, 191, 36, 0.13)' : 'rgba(34, 211, 238, 0.13)');
+              const pillBr = isSel ? 'rgba(249, 115, 22, 0.55)'
+                : (isNearInSphere ? 'rgba(251, 191, 36, 0.38)' : 'rgba(34, 211, 238, 0.38)');
+              ctx.beginPath();
+              if (ctx.roundRect) ctx.roundRect(it.sx - estW / 2 - 4, ly - fSize * 1.05, estW + 8, fSize + 6, 5);
+              else ctx.rect(it.sx - estW / 2 - 4, ly - fSize * 1.05, estW + 8, fSize + 6);
+              ctx.fillStyle = pillBg;
+              ctx.fill();
+              ctx.lineWidth = 1;
+              ctx.strokeStyle = pillBr;
+              ctx.stroke();
+            }
+            const clr = isSel ? '#ffedd5' : (isNearInSphere ? '#fcd34d' : (it.matches ? '#67e8f9' : '#94a3b8'));
+            drawLabelPill(txt, it.sx, ly, clr, fSize, isSel || isHover || isNearInSphere);
             drawn++;
           }
         }

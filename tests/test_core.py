@@ -236,6 +236,12 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("syncDetailToggle", html)
         self.assertNotIn("closeDetail", html)
         self.assertIn("inspector-collapsed", html)
+        # 0.2.32: 3D Sphere Smart labels are context-only like every other
+        # tab (no more z-cutoff wall of front-facing names), and the sphere
+        # uses the same color-coded pills with dim slate Dense leftovers
+        self.assertIn("labelMode === 'smart' && !it.matches && !isNearInSphere", html)
+        self.assertNotIn("labelMode === 'smart' && it.z < 0.2", html)
+        self.assertIn("ctxPill", html)
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows
