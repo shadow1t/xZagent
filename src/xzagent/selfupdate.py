@@ -396,6 +396,11 @@ def selfupdate(path_arg=None, no_pull=False, progress=None):
 
 def child_finish(spec, ppid, label=None):
     """Runs in the handoff interpreter after the parent has exited."""
+    if spec == "uninstall" or spec == "uninstall-purge":
+        # ctxp uninstall uses the same Windows handoff: the running exe
+        # is locked, so a detached child finishes the removal for us.
+        from .uninstall import child_uninstall
+        return child_uninstall(purge=spec == "uninstall-purge", ppid=ppid)
     for _ in range(240):  # wait up to one minute for the parent to die
         try:
             os.kill(int(ppid), 0)

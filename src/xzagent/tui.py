@@ -30,6 +30,13 @@ _SPINNER = ["\u280b", "\u2819", "\u2839", "\u2838", "\u283c", "\u2834",
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 _vt_ready = False
+_SPIN_PAUSE = False   # frozen while the Ctrl+C y/N question owns the line
+
+
+def pause_progress(paused):
+    """Freeze/thaw every live spinner (the Ctrl+C question needs the line)."""
+    global _SPIN_PAUSE
+    _SPIN_PAUSE = bool(paused)
 
 
 def _enable_windows_ansi():
@@ -189,6 +196,8 @@ class Progress:
 
         def loop():
             while not self._stop.wait(self.tick):
+                if _SPIN_PAUSE:
+                    continue
                 with self._lock:
                     if self._state is not None:
                         self._maybe_draw(force=True)

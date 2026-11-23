@@ -102,6 +102,20 @@ Upgrading is one command (`git pull` + reinstall, no `pip uninstall` needed):
 ctxp update            # from your clone, an enclosing checkout, or GitHub
 ```
 
+Removing it is one command too (asks first; `--yes` skips the question):
+
+```bash
+ctxp uninstall          # removes the CLI; project data is never touched
+ctxp uninstall --purge  # also removes ~/.xzagent (the global config dir)
+```
+
+`ctxp uninstall` never deletes project data: each project's `.xzagent/`
+index is plain project files, and MCP client configs belong to their
+projects (clean one with `ctxp setup --remove` inside it). Reinstall
+any time with `pip install git+https://github.com/shadow1t/xZagent.git`.
+While a command runs, Ctrl+C asks before it stops: `y` stops (exit 130),
+Enter keeps going, and a second Ctrl+C stops right away.
+
 ## Quickstart
 
 ```bash
@@ -120,7 +134,7 @@ ctxp find ./my-project --only-dirs api,ui --recent --top 5   # freshest files in
 ctxp graph ./my-project login                                # who calls login, what login calls
 ```
 
-Every flag composes: `--pattern`, `--only-dirs`, `--only-ext`, `--no-tests`, `--skip-ext`, `--skip-dirs`, `--recent`, `--top`. Full reference in the [usage guide](docs/USAGE.md).
+Every flag composes: `--pattern`, `--only-dirs`, `--only-ext`, `--no-tests`, `--skip-ext`, `--skip-dirs`, `--recent`, `--top`. Every command explains itself: `ctxp -h` for the overview, `ctxp help <command>` for one command in depth. Full reference in the [usage guide](docs/USAGE.md).
 
 ## Plug it into your AI tools (MCP)
 

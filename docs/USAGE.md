@@ -54,6 +54,8 @@ ctxp schema [ROOT] --html s.html # same schema as an interactive HTML map
                                   #   file)
 ctxp serve [ROOT]                 # MCP server (stdio) for AI apps
 ctxp update [SRC]                 # update the CLI itself (see below)
+ctxp uninstall [--yes] [--purge]  # remove the CLI (see below)
+ctxp help [COMMAND]               # overview, or one command in depth
 ```
 
 Global options `--db PATH`, `--reindex`, `--index-all`, `--default-skips` and
@@ -458,6 +460,78 @@ Concurrent `ctxp update` runs cannot race each other: the first one takes
 an exclusive lock (`~/.xzagent/update.lock`, stale after 10 minutes) and
 any other stands down with `✔ an update is already in progress · letting
 it finish`.
+
+## Removing the CLI: `ctxp uninstall`
+
+One command undoes the install (a `y/N` question runs first; `--yes`
+skips it):
+
+```bash
+ctxp uninstall          # ask, then pip-uninstall the CLI
+ctxp uninstall --yes    # no question
+ctxp uninstall --purge  # also remove ~/.xzagent (global config: saved update source)
+```
+
+What it removes: the `xzagent` pip package and its `ctxp` commands.
+
+What it never touches:
+
+- each project's `.xzagent/` index: plain project data, delete it like
+  any folder if you want it gone
+- MCP client configs: they belong to their projects. To clean one
+  project's config run `ctxp setup --remove` inside it **before**
+  uninstalling
+- anything else on the machine
+
+On Windows the running `ctxp.exe` cannot delete itself, so it uses the
+same machinery as `ctxp update`: rename the live exe aside and uninstall
+right there, or (if even the rename is refused) hand the removal to a
+detached interpreter that finishes once the command exits.
+
+Reinstall any time: `pip install git+https://github.com/shadow1t/xZagent.git`.
+
+## Ctrl+C asks before it stops
+
+While any command runs in a real terminal, the first Ctrl+C does not
+kill it instantly. It freezes the progress line and asks:
+
+```
+  Ctrl+C received. Stop now? [y/N]
+```
+
+- `y` + Enter (or `yes`): the command stops cleanly, printing
+  `✘ stopped by user` and exiting with code 130
+- `Enter` (empty or anything that is not `y`): `keeping going`, the
+  command resumes exactly where it was
+- a second Ctrl+C at any moment (even in the same tap-tap burst, or
+  while the question sits on screen): stops immediately, no answer
+  needed
+
+Details worth knowing:
+
+- the question is skipped in non-interactive sessions (piped output,
+  scripts, CI, tests): nothing changes for automation, and piped
+  output stays byte-for-byte identical
+- `ctxp serve` is exempt on purpose: an MCP stdio server must die
+  silently on Ctrl+C, never write a question into its protocol stream
+- a small wakeup socket (not just the signal handler) catches the
+  second Ctrl+C reliably, even in the instant where Python cannot run
+  a nested handler
+
+## Getting help
+
+Every surface shows the same, growing story:
+
+```bash
+ctxp -h                 # the overview: commands, global flags, workflow
+ctxp help               # the same overview
+ctxp help find          # one command in depth: every flag + examples
+ctxp find -h            # identical to `ctxp help find`
+```
+
+Each command's help explains what it is for, when to reach for it, how
+its flags compose, and shows copy-ready examples. The full reference
+for humans and AI agents stays in this document (`docs/USAGE.md`).
 
 ## Troubleshooting
 

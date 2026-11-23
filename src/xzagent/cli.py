@@ -8,10 +8,12 @@ import time
 from .find import find_matching, find_on_disk, recently_modified
 from .graph import call_graph, neighbors
 from .index import connect, default_db_path, ensure_index
+from .interrupt import ABORT_EXIT_CODE, abort_line, install_guard, restore_guard
 from .map import repo_map
 from .packer import build_pack
 from .rank import rank_files
 from .selfupdate import child_finish, selfupdate
+from .uninstall import REINSTALL_HINT, uninstall
 from . import __version__
 from .tui import BLUE, CYAN, GRAY, GREEN, VIOLET, WHITE, Progress, bar, color_enabled, paint
 
@@ -337,6 +339,33 @@ def cmd_serve(args):
     return 0
 
 
+def cmd_uninstall(args):
+    return uninstall(yes=bool(getattr(args, "yes", False)),
+                     purge=bool(getattr(args, "purge", False)))
+
+
+def _get_subparser(topic):
+    """The argparse subparser object for one command name, or None."""
+    p = build_parser()
+    for action in p._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            return action.choices.get(topic)
+    return None
+
+
+def cmd_help(args):
+    """`ctxp help [COMMAND]`: the curated overview, or one command in depth."""
+    topic = getattr(args, "topic", None)
+    if not topic:
+        build_parser().print_help()
+        return 0
+    sub = _get_subparser(topic)
+    if sub is None:
+        raise SystemExit("error: unknown command '%s' \u00b7 run ctxp help" % topic)
+    sub.print_help()
+    return 0
+
+
 MCP_CLIENT_FILES = {
     "claude": ".mcp.json",           # Claude Code, project scope
     "cursor": ".cursor/mcp.json",    # Cursor, project scope
@@ -573,37 +602,89 @@ def cmd_setup(args):
     return 0
 
 
+def _add_parser(sub, name, **kw):
+    """Every subcommand gets multiline descriptions in its own help."""
+    kw.setdefault("formatter_class", argparse.RawDescriptionHelpFormatter)
+    return sub.add_parser(name, **kw)
+
+
 def build_parser():
     p = argparse.ArgumentParser(
         prog="ctxp",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
-            "Offline context packer for AI agents on local projects.\n"
-            "Indexes a codebase once, then answers: which files matter for a task,\n"
-            "what does the repo look like, and how do files/symbols relate.\n\n"
-            "Full docs for humans and AI agents: docs/USAGE.md (every key, tool\n"
-            "and workflow below is documented there in detail)."
+            "ctxp %s \u00b7 offline context packer for AI agents on local projects.\n"
+            "\n"
+            "One index, every command reads it. ctxp indexes the codebase once\n"
+            "into a portable SQLite DB (<root>/.xzagent/index.db), then answers\n"
+            "instantly, fully offline: which files matter for this task, how the\n"
+            "repo is laid out, how files and symbols relate, what the database\n"
+            "schema looks like.\n"
+            "\n"
+            "HOW THE COMMANDS FIT TOGETHER\n"
+            "  index        build the index (or it builds itself on first use)\n"
+            "  map          overview for humans: every directory, top files per dir\n"
+            "  ask          pick the few files worth reading for a task (ranked)\n"
+            "  find         target files precisely: name/symbol/language/extension\n"
+            "  pack         bundle a ready-to-paste context.md for an AI agent\n"
+            "  graph        how files import/call each other\n"
+            "  schema       tables, columns, FKs (SQL files, SQLite, live PostgreSQL)\n"
+            "  setup        connect MCP clients (Claude, Cursor, Antigravity, ...)\n"
+            "  serve        run the MCP stdio server those clients launch\n"
+            "  update       update the CLI itself in one command\n"
+            "  uninstall    remove the CLI from this machine (project data stays)\n"
+            "  help         this overview, or per-command help: ctxp help find\n"
+            "\n"
+            "THE FASTEST WAY TO LEARN A COMMAND\n"
+            "  ctxp help <command>      every flag explained, with examples\n"
+            "  ctxp <command> -h        the same help\n"
+            "  docs/USAGE.md            complete docs for humans and AI agents"
+            % __version__
         ),
         epilog=(
-            "examples:\n"
-            "  ctxp map . -o map.md                repo map (every dir shown; --full for all files)\n"
-            "  ctxp map . --reindex               rebuild the index first\n"
-            "  ctxp find 'api_v2*' --only-dirs api,ui    filename glob, scoped to dirs\n"
-            "  ctxp find --symbol 'Dialog*' --recent --top 5    symbol search, freshest first\n"
-            "  ctxp ask 'fix v2 auth check' --only-dirs api --skip-ext .md,.txt\n"
-            "  ctxp ask 'billing flow' --only-ext .py,.tsx    rank only real code files\n"
-            "  ctxp ask 'billing flow' --no-tests              score code, not its tests\n"
-            "  ctxp pack 'refactor login flow' -o context.md\n"
-            "  ctxp graph --path api_v2/auth.py   import/call neighbors\n"
-            "  ctxp index . --index-all            disable built-in noise skips once\n"
-            "  ctxp index . --skip docs/ --skip '*.g.dart'   sticky extra excludes\n"
-            "  ctxp serve .                       run the MCP stdio server\n\n"
-            "index-time excludes use gitignore syntax. '.xzagentignore' in the project\n"
-            "root adds permanent per-project excludes ('!' re-includes).\n"
-            "global flags (--db, --reindex, --index-all, --default-skips, --skip) work\n"
-            "BEFORE or AFTER the subcommand: ctxp --reindex map . OR ctxp map . --reindex.\n"
-            "search-time filters (--pattern/--only-dirs/--only-ext/--skip-ext/--skip-dirs/--no-tests) narrow\n"
-            "existing indexes and never rebuild them."
+            "GETTING HELP\n"
+            "  ctxp -h / ctxp help          this overview: commands, flags, workflow\n"
+            "  ctxp help <command>           full help for one command, examples included\n"
+            "  docs/USAGE.md                 complete docs for humans and AI agents\n"
+            "\n"
+            "GLOBAL FLAGS (work before or after the subcommand)\n"
+            "  --db PATH                     custom index DB path\n"
+            "  --reindex                     rebuild the index first\n"
+            "  --index-all                   index everything, even noisy files\n"
+            "  --default-skips               restore the built-in noise skips\n"
+            "  --skip PATTERN                extra exclude, repeatable, gitignore syntax\n"
+            "\n"
+            "SEARCH FLAGS narrow existing results, never rebuild anything\n"
+            "  --pattern, --only-dirs, --skip-dirs, --only-ext, --skip-ext,\n"
+            "  --no-tests, --recent, --lang\n"
+            "\n"
+            "TYPICAL WORKFLOW\n"
+            "  1. cd into a project and run: ctxp map         (index builds itself)\n"
+            "  2. describe the task:   ctxp ask \"billing retry\"\n"
+            "  3. hand over context:   ctxp pack \"billing retry\" -o context.md\n"
+            "  4. wire agents once:    ctxp setup             (MCP clients connect)\n"
+            "\n"
+            "EXAMPLES\n"
+            "  ctxp map . -o map.md                         repo map written to a file\n"
+            "  ctxp map . --full                            every file, no per-dir cap\n"
+            "  ctxp find 'api_v2*' --only-dirs api,ui       name glob, scoped to dirs\n"
+            "  ctxp find --symbol 'Dialog*' --recent --top 5  symbol search, freshest first\n"
+            "  ctxp ask 'billing flow' --only-ext .py       rank only real code files\n"
+            "  ctxp ask 'billing flow' --no-tests           score code, not its tests\n"
+            "  ctxp pack 'refactor login flow' -o context.md  full context pack\n"
+            "  ctxp graph --path api_v2/auth.py             import/call neighbors\n"
+            "  ctxp schema myproj --html schema.html        interactive 3D schema map\n"
+            "  ctxp index . --skip docs/ --skip '*.g.dart'  sticky extra excludes\n"
+            "  ctxp serve .                                  run the MCP stdio server\n"
+            "  ctxp update                                   one-command self-update\n"
+            "  ctxp uninstall --purge                       remove the CLI cleanly\n"
+            "\n"
+            "NICE TO KNOW\n"
+            "  Ctrl+C asks before it stops: y stops (exit 130), Enter keeps going;\n"
+            "  press Ctrl+C twice to stop without waiting for an answer.\n"
+            "  NO_COLOR=1 forces plain output; piped output is plain anyway.\n"
+            "  '.xzagentignore' in the project root adds permanent per-project\n"
+            "  excludes ('!' re-includes); index-time excludes use gitignore syntax."
         ),
     )
     p.add_argument("--version", action="version", version="xzagent " + __version__)
@@ -621,11 +702,37 @@ def build_parser():
     def add_root(sp):
         sp.add_argument("root", nargs="?", default=".", help="Project root path (default: current directory)")
 
-    sp = sub.add_parser("index", help="Build the index for a project")
+    sp = _add_parser(sub, "index",
+                     help="Build the index for a project",
+                     description=(
+                         "Build the index: one portable SQLite DB at <root>/.xzagent/index.db.\n"
+                         "\n"
+                         "Everything else reads this index. Any command that needs it\n"
+                         "builds it automatically when missing or stale; ctxp index makes\n"
+                         "that build explicit (or forced).\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp index .                    build (or refresh) once\n"
+                         "  ctxp index . --reindex           rebuild from scratch\n"
+                         "  ctxp index . --index-all         also keep noise files (tmp_*, *.min.js, ...)\n"
+                         "  ctxp index . --skip build/       extra exclude, sticky (stored in the index)"))
     add_root(sp)
     sp.set_defaults(func=cmd_index)
 
-    sp = sub.add_parser("map", help="Print the repo map (every directory is always shown)")
+    sp = _add_parser(sub, "map",
+                     help="Print the repo map (every directory is always shown)",
+                     description=(
+                         "Print the repo map: every directory always, top files per dir.\n"
+                         "\n"
+                         "The map is what a human (or an agent) reads first to understand\n"
+                         "the layout. Directories are never skipped, only the files shown\n"
+                         "inside each one are capped.\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp map                         from inside the project\n"
+                         "  ctxp map . -o map.md             write to a file\n"
+                         "  ctxp map . --per-dir 40          more files per directory\n"
+                         "  ctxp map . --full                every file, no cap"))
     add_root(sp)
     sp.add_argument("-o", "--output", help="Write the map to a file instead of stdout")
     sp.add_argument("--per-dir", type=int, default=25, metavar="N",
@@ -633,7 +740,21 @@ def build_parser():
     sp.add_argument("--full", action="store_true", help="Show every file with no per-directory cap")
     sp.set_defaults(func=cmd_map)
 
-    sp = sub.add_parser("ask", help="Rank files relevant to a task (root optional: ctxp ask \"task\" inside the project)")
+    sp = _add_parser(sub, "ask",
+                     help="Rank files relevant to a task (root optional: ctxp ask \"task\" inside the project)",
+                     description=(
+                         "Rank files by relevance to a task: the shortlist worth reading\n"
+                         "first. Scores combine name match, symbol match, path depth,\n"
+                         "recency and language match.\n"
+                         "\n"
+                         "The root is optional inside a project: ctxp ask \"task\".\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp ask 'billing retry flow'\n"
+                         "  ctxp ask 'auth check' --top 20\n"
+                         "  ctxp ask 'billing flow' --no-tests          score code, not tests\n"
+                         "  ctxp ask 'api_v2' --only-dirs api --skip-ext .md,.txt\n"
+                         "  ctxp ask 'ui cleanup' --pattern '*Dialog*' --recent"))
     sp.add_argument("query")
     add_root(sp)
     sp.add_argument("--top", type=int, default=10, help="Max results (0 = all matches)")
@@ -650,7 +771,23 @@ def build_parser():
     sp.add_argument("--recent", action="store_true", help="Prefer recently modified files among the matches")
     sp.set_defaults(func=cmd_ask)
 
-    sp = sub.add_parser("find", help="Find files by name/path glob, language, extension, or defining symbol")
+    sp = _add_parser(sub, "find",
+                     help="Find files by name/path glob, language, extension, or defining symbol",
+                     description=(
+                         "Target files precisely: by name glob, defining symbol, language\n"
+                         "or extension. Unlike ask there is no task text: you already\n"
+                         "know what you want.\n"
+                         "\n"
+                         "Also scans the disk for noise-skipped files (tmp_*, *.min.js,\n"
+                         "lockfiles, ...) the index never ingested: a named file always\n"
+                         "shows up.\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp find 'api_v2*'\n"
+                         "  ctxp find 'api_v2*' --only-dirs api,ui\n"
+                         "  ctxp find --symbol 'Dialog*'\n"
+                         "  ctxp find --symbol 'Dialog*' --recent --top 5\n"
+                         "  ctxp find --lang python --recent"))
     add_root(sp)
     sp.add_argument("pattern", nargs="?", default=None,
                     help="Glob pattern(s), comma-separated: 'api_v2*', '*Dialog*.tsx', 'docs/**'")
@@ -660,7 +797,7 @@ def build_parser():
                     help="Same as --ext, kept for consistency with ask (e.g. .py,.tsx)")
     sp.add_argument("--symbol", metavar="GLOB", help="Only files defining a class/function matching glob (e.g. Dialog*, *Handler)")
     sp.add_argument("--skip-ext", metavar="EXTS", help="Skip extensions, comma-separated (e.g. .md,.txt)")
-    sp.add_argument("--skip-dirs", metavar="DIRS", help="Skip directory names, comma-separated (e.g. docs,generated)")
+    sp.add_argument("--skip-dirs", metavar="DIRS", help="Skip these directory names, comma-separated (e.g. docs,generated)")
     sp.add_argument("--only-dirs", metavar="DIRS",
                     help="Only files under these directory names, comma-separated (matches any depth, e.g. api,ui)")
     sp.add_argument("--no-tests", action="store_true",
@@ -669,20 +806,51 @@ def build_parser():
     sp.add_argument("--top", type=int, default=None, help="Limit result count")
     sp.set_defaults(func=cmd_find)
 
-    sp = sub.add_parser("pack", help="Write a full context pack (context.md) for a task")
+    sp = _add_parser(sub, "pack",
+                     help="Write a full context pack (context.md) for a task",
+                     description=(
+                         "Write a complete, ready-to-paste context pack for an AI agent:\n"
+                         "the ranked files' contents with headers, to context.md. One\n"
+                         "command replaces copy-pasting files into a chat by hand.\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp pack 'refactor login flow' -o context.md\n"
+                         "  ctxp pack 'fix v2 auth check' --top 12"))
     sp.add_argument("query")
     add_root(sp)
     sp.add_argument("--top", type=int, default=8)
     sp.add_argument("-o", "--output", default=None)
     sp.set_defaults(func=cmd_pack)
 
-    sp = sub.add_parser("graph", help="Show call graph for a symbol, or neighbors of a file")
+    sp = _add_parser(sub, "graph",
+                     help="Show call graph for a symbol, or neighbors of a file",
+                     description=(
+                         "Relations between modules: who imports/calls whom.\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp graph login                     upstream + downstream callers of a symbol (JSON)\n"
+                         "  ctxp graph --path api_v2/auth.py     import/call neighbors of one file\n"
+                         "\n"
+                         "The root is optional inside a project: ctxp graph login."))
     add_root(sp)
     sp.add_argument("symbol", nargs="?", default=None)
     sp.add_argument("--path", default=None, help="Show import/call neighbors of this file instead")
     sp.set_defaults(func=cmd_graph)
 
-    sp = sub.add_parser("schema", help="Show DB schema (tables, columns, foreign keys) from .sql files and SQLite DBs")
+    sp = _add_parser(sub, "schema",
+                     help="Show DB schema (tables, columns, foreign keys) from .sql files and SQLite DBs",
+                     description=(
+                         "Tables, columns and foreign keys, from .sql files and SQLite\n"
+                         "DBs found in the project, or live from a PostgreSQL server.\n"
+                         "\n"
+                         "Plain listing on stdout, or one standalone interactive HTML\n"
+                         "map: 3D + ER views, one color per database, a live inspector.\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp schema myproj\n"
+                         "  ctxp schema myproj --html schema.html\n"
+                         "  ctxp schema myproj --only tenants/ --exclude migrations\n"
+                         "  ctxp schema --pg postgresql://user:pass@localhost:5432/db --html schema.html"))
     add_root(sp)
     sp.add_argument("-o", "--output", help="Write the schema to a file instead of stdout")
     sp.add_argument("--html", metavar="FILE",
@@ -694,11 +862,33 @@ def build_parser():
                     help="Drop tables whose source path contains this substring (repeatable): --exclude migrations")
     sp.set_defaults(func=cmd_schema)
 
-    sp = sub.add_parser("serve", help="Run the MCP stdio server for this project")
+    sp = _add_parser(sub, "serve",
+                     help="Run the MCP stdio server for this project",
+                     description=(
+                         "Run the MCP stdio server for this project (query, find, map,\n"
+                         "pack, graph and schema as agent tools). Not meant for humans\n"
+                         "to read; launch it through an MCP client:\n"
+                         "\n"
+                         "  ctxp setup          write the client configs once\n"
+                         "  ctxp setup --remove undo them just as cleanly"))
     add_root(sp)
     sp.set_defaults(func=cmd_serve)
 
-    sp = sub.add_parser("setup", help="Write MCP client configs into the project (Claude Code, Cursor): agents find the tools with zero setup")
+    sp = _add_parser(sub, "setup",
+                     help="Write MCP client configs into the project (Claude Code, Cursor): agents find the tools with zero setup",
+                     description=(
+                         "Write MCP client configs so agents inside this project get\n"
+                         "the ctxp tools with zero setup. Project-scoped clients\n"
+                         "(Claude Code, Cursor) get portable configs INSIDE the\n"
+                         "project, safe to commit. Machine-level clients (Antigravity,\n"
+                         "Windsurf) get an absolute entry in their global config.\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp setup                            Claude Code + Cursor (default)\n"
+                         "  ctxp setup --client cursor            one client only\n"
+                         "  ctxp setup --client windsurf --absolute\n"
+                         "  ctxp setup --remove                   undo\n"
+                         "  ctxp setup --client generic           print a paste-ready snippet"))
     add_root(sp)
     sp.add_argument("--client", action="append",
                     choices=(sorted(set(list(MCP_CLIENT_FILES)
@@ -714,16 +904,63 @@ def build_parser():
                          "launch from an odd cwd; never commit that flavor)")
     sp.set_defaults(func=cmd_setup)
 
-    sp = sub.add_parser(
-        "update",
-        help="Update the xzagent CLI itself: git pull + reinstall, one command (no more pip uninstall/install)")
+    sp = _add_parser(sub, "update",
+                     help="Update the xzagent CLI itself: git pull + reinstall, one command (no more pip uninstall/install)",
+                     description=(
+                         "Update the xzagent CLI itself: one command, no pip dance.\n"
+                         "\n"
+                         "Source resolution: the folder argument, the source remembered\n"
+                         "from your last update (~/.xzagent/config.json), an xZagent\n"
+                         "checkout containing your current directory, or GitHub itself\n"
+                         "(no local clone needed).\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp update                       from the remembered/GitHub source\n"
+                         "  ctxp update ~/code/xZagent          from your clone (git pull included)\n"
+                         "  ctxp update ~/code/xZagent --no-pull"))
     sp.add_argument("src", nargs="?", default=None,
                     help="Source folder (your xZagent clone); default: remembered source, an enclosing checkout, or GitHub")
     sp.add_argument("--no-pull", action="store_true",
                     help="Skip git pull and reinstall the clone's current files as-is")
     sp.set_defaults(func=cmd_update)
-    return p
 
+    sp = _add_parser(sub, "uninstall",
+                     help="Remove the xzagent CLI from this machine (project data is never touched)",
+                     description=(
+                         "Remove the xzagent CLI from this machine: pip uninstalls the\n"
+                         "package and its ctxp commands. A y/N confirmation runs first\n"
+                         "(--yes skips it).\n"
+                         "\n"
+                         "Project data is never touched: each project's .xzagent/ index\n"
+                         "is plain project data, and MCP client configs belong to\n"
+                         "their projects. To clean one project's MCP config run\n"
+                         "'ctxp setup --remove' inside it first.\n"
+                         "\n"
+                         "Examples:\n"
+                         "  ctxp uninstall                    ask, then remove\n"
+                         "  ctxp uninstall --yes              no confirmation\n"
+                         "  ctxp uninstall --purge            also remove ~/.xzagent (global config)\n"
+                         "\n"
+                         "Reinstall any time: " + REINSTALL_HINT))
+    sp.add_argument("--yes", action="store_true",
+                    help="Skip the y/N confirmation")
+    sp.add_argument("--purge", action="store_true",
+                    help="Also remove the global ~/.xzagent config dir (saved update source)")
+    sp.set_defaults(func=cmd_uninstall)
+
+    sp = _add_parser(sub, "help",
+                     help="Show the full overview, or detailed help for one command",
+                     description=(
+                         "ctxp help            the overview: commands, global flags, workflow\n"
+                         "ctxp help find       detailed help for ONE command: every flag parsed\n"
+                         "\n"
+                         "Same as ctxp <command> -h. Examples:\n"
+                         "  ctxp help schema\n"
+                         "  ctxp help find"))
+    sp.add_argument("topic", nargs="?", default=None, metavar="COMMAND",
+                    help="Command to describe (ctxp help find); omit for the overview")
+    sp.set_defaults(func=cmd_help)
+    return p
 
 _GLOBAL_OPTS = {"--db", "--reindex", "--index-all", "--default-skips", "--skip"}
 _GLOBAL_OPTS_WITH_VALUE = {"--db", "--skip"}
@@ -778,7 +1015,18 @@ def main(argv=None):
         return child_finish(argv[1], argv[2],
                             argv[3] if len(argv) > 3 else argv[1])
     args = build_parser().parse_args(_hoist_global_opts(argv))
-    return args.func(args)
+    if args.func is cmd_serve:
+        # the MCP stdio server must die instantly on Ctrl+C with no
+        # question ever written into its protocol stream
+        return args.func(args)
+    install_guard(getattr(args, "command", None) or "command")
+    try:
+        return args.func(args)
+    except KeyboardInterrupt:
+        abort_line(getattr(args, "command", None))
+        return ABORT_EXIT_CODE
+    finally:
+        restore_guard()
 
 
 if __name__ == "__main__":
