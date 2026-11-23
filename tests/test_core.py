@@ -221,6 +221,10 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("collapseDetail", html)
         self.assertIn("reopenDetail", html)
         self.assertIn("let autoSpin = false", html)
+        # 0.2.29: grabbing the seam handle drags the scene (drag-through) and
+        # only a stationary press toggles the sidebar (no more dead zone)
+        self.assertIn("sideToggle').addEventListener('mousedown'", html)
+        self.assertIn("dragMoved > 5", html)
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows

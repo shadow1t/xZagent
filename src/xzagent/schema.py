@@ -487,6 +487,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       font-size: 14px;
       line-height: 1;
       cursor: pointer;
+      user-select: none;
+      -webkit-user-drag: none;
+      touch-action: manipulation;
       z-index: 26;
       transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1), color 0.14s, border-color 0.14s;
     }
@@ -4228,7 +4231,29 @@ CREATE TABLE projects (
       st.title = closed ? 'Open sidebar' : 'Collapse sidebar';
     }
 
+    /* Grab-anywhere handle: pressing the edge handle starts a REAL canvas
+       drag (rotate / pan follows the pointer), only a stationary press is a
+       click. The seam can never eat a grab or jank the layout mid-motion. */
+    document.getElementById('sideToggle').addEventListener('mousedown', (e) => {
+      if (e.button !== 0 && e.button !== 1) return;
+      anim = null;
+      dragMoved = 0;
+      dragState = {
+        pan: tool === 'pan' || e.shiftKey || e.button === 1,
+        x: e.clientX,
+        y: e.clientY,
+        rx: rot.rx,
+        ry: rot.ry,
+        px: pan.x,
+        py: pan.y
+      };
+      canvas.classList.add('grabbing');
+      hideHoverTip();
+      e.preventDefault();
+    });
+
     document.getElementById('sideToggle').addEventListener('click', () => {
+      if (dragMoved > 5) return;   // dragged = scene interaction, not a toggle
       sideEl.classList.toggle('closed');
       syncSideToggle();
       setTimeout(resizeCanvas, 230);
