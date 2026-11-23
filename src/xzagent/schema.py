@@ -1013,32 +1013,41 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       white-space: nowrap;
     }
 
-    .detail-actions {
-      display: flex;
-      gap: 6px;
-      flex: none;
-    }
-
+    /* Edge-mounted inspector handle: the right-side twin of #sideToggle.
+       Rides the drawer's seam (tucks to the rail's edge when collapsed) */
     #collapseDetail {
-      background: rgba(30, 41, 59, 0.85);
-      color: var(--text-muted);
+      display: none;
+      position: absolute;
+      top: 50%;
+      right: clamp(300px, 34vw, 385px);
+      width: 20px;
+      height: 64px;
+      margin: 0;
+      padding: 0;
+      transform: translateY(-50%);
       border: 1px solid var(--border-strong);
-      border-radius: 8px;
-      width: 30px;
-      height: 30px;
+      border-right: none;
+      border-radius: 10px 0 0 10px;
+      background: linear-gradient(180deg, #17233b, #0f172c);
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1;
       cursor: pointer;
-      font-size: 16px;
-      flex: none;
-      display: grid;
-      place-items: center;
-      transition: all 0.14s;
+      user-select: none;
+      -webkit-user-drag: none;
+      touch-action: manipulation;
+      z-index: 26;
+      transition: right 0.24s cubic-bezier(0.4, 0, 0.2, 1), color 0.14s, border-color 0.14s;
     }
 
     #collapseDetail:hover {
-      background: #1d4ed8;
       color: #fff;
       border-color: var(--accent);
+      background: linear-gradient(180deg, #1d2f52, #14213c);
     }
+
+    body.inspector-open #collapseDetail { display: block; }
+    body.inspector-collapsed #collapseDetail { right: 42px; }
 
     .detail-header {
       flex: none;
@@ -1081,27 +1090,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       width: 7px;
       height: 7px;
       border-radius: 50%;
-    }
-
-    #closeDetail {
-      background: rgba(30, 41, 59, 0.85);
-      color: var(--text-muted);
-      border: 1px solid var(--border-strong);
-      border-radius: 8px;
-      width: 30px;
-      height: 30px;
-      cursor: pointer;
-      font-size: 16px;
-      flex: none;
-      display: grid;
-      place-items: center;
-      transition: all 0.14s;
-    }
-
-    #closeDetail:hover {
-      background: #ef4444;
-      border-color: #f87171;
-      color: #fff;
     }
 
     .detail-stats {
@@ -1576,6 +1564,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.55);
       }
 
+      /* The seam handle makes no sense on the mobile bottom-sheet drawer;
+         the rail's own » button reopens it there */
+      #collapseDetail { display: none; }
+
       #detail.open {
         position: absolute;
         left: 0;
@@ -1707,10 +1699,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               <h2 id="tname">table_name</h2>
               <div id="tsrcc" class="srchip"><span class="sdot"></span><span id="tsrcc-txt"></span></div>
             </div>
-            <div class="detail-actions">
-              <button id="collapseDetail" title="Collapse inspector (keeps the selection)">«</button>
-              <button id="closeDetail" title="Close inspector &amp; exit focus (Esc)">×</button>
-            </div>
           </div>
           <div class="detail-stats" id="tstats"></div>
           <div class="detail-mode-bar" id="detail-mode-bar"></div>
@@ -1742,6 +1730,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div id="refbody" class="ref-list"></div>
         </div>
       </aside>
+
+      <!-- Edge-mounted inspector handle: the right-side twin of #sideToggle.
+           Rides the drawer's seam, folds it to a slim rail and back. -->
+      <button id="collapseDetail" title="Collapse inspector">›</button>
     </main>
   </div>
 
@@ -3369,6 +3361,7 @@ CREATE TABLE projects (
       hoveredItem = null;
       hideHoverTip();
       detailEl.classList.remove('open');
+      syncDetailToggle();
 
       mode = 'graph';
       syncModeUI();
@@ -3438,6 +3431,7 @@ CREATE TABLE projects (
 
       renderInspector(t);
       detailEl.classList.add('open');
+      syncDetailToggle();
       updateStageHud();
 
       requestAnimationFrame(() => {
@@ -3473,6 +3467,7 @@ CREATE TABLE projects (
 
     function renderInspector(t) {
       detailEl.classList.remove('collapsed');
+      syncDetailToggle();
       const color = sColor[t.source] || '#3b82f6';
       document.getElementById('tname').textContent = t.name;
 
@@ -3622,6 +3617,7 @@ CREATE TABLE projects (
       selectedKey = null;
       detailEl.classList.remove('open');
       detailEl.classList.remove('collapsed');
+      syncDetailToggle();
       document.querySelectorAll('.titem.sel, .card.sel').forEach(el => el.classList.remove('sel'));
       updateStageHud();
       requestAnimationFrame(() => {
@@ -3643,6 +3639,7 @@ CREATE TABLE projects (
       searchInput.value = '';
       searchClear.classList.remove('visible');
       detailEl.classList.remove('open');
+      syncDetailToggle();
       hideHoverTip();
 
       if (data.length > HUGE_TABLE_THRESHOLD && sources.length > 1) {
@@ -4285,17 +4282,48 @@ CREATE TABLE projects (
       setTimeout(resizeCanvas, 230);
     });
 
-    document.getElementById('closeDetail').addEventListener('click', () => exitFocus());
+    /* Collapsible inspector: fold to a slim rail, keep the selection intact.
+       The seam handle (#collapseDetail) is the right-side twin of #sideToggle:
+       it toggles both ways, and dragging from it rotates/pans the scene. */
+    function syncDetailToggle() {
+      const open = detailEl.classList.contains('open');
+      const collapsed = detailEl.classList.contains('collapsed');
+      document.body.classList.toggle('inspector-open', open);
+      document.body.classList.toggle('inspector-collapsed', open && collapsed);
+      const dt = document.getElementById('collapseDetail');
+      dt.textContent = collapsed ? '‹' : '›';
+      dt.title = collapsed ? 'Open inspector' : 'Collapse inspector';
+    }
 
-    /* Collapsible inspector: fold to a slim rail, keep the selection intact */
     function setDetailCollapsed(c) {
       detailEl.classList.toggle('collapsed', c);
-      if (c) {
-        const r = selectedKey ? byKey[selectedKey] : null;
-        document.getElementById('rail-name').textContent = r ? r.name : '';
-      }
+      const r = selectedKey ? byKey[selectedKey] : null;
+      document.getElementById('rail-name').textContent = r ? r.name : '';
+      syncDetailToggle();
     }
-    document.getElementById('collapseDetail').addEventListener('click', () => setDetailCollapsed(true));
+
+    document.getElementById('collapseDetail').addEventListener('mousedown', (e) => {
+      if (e.button !== 0 && e.button !== 1) return;
+      anim = null;
+      dragMoved = 0;
+      dragState = {
+        pan: tool === 'pan' || e.shiftKey || e.button === 1,
+        x: e.clientX,
+        y: e.clientY,
+        rx: rot.rx,
+        ry: rot.ry,
+        px: pan.x,
+        py: pan.y
+      };
+      canvas.classList.add('grabbing');
+      hideHoverTip();
+      e.preventDefault();
+    });
+
+    document.getElementById('collapseDetail').addEventListener('click', () => {
+      if (dragMoved > 5) return;   // dragged = scene interaction, not a toggle
+      setDetailCollapsed(!detailEl.classList.contains('collapsed'));
+    });
     document.getElementById('reopenDetail').addEventListener('click', () => setDetailCollapsed(false));
 
     document.getElementById('zIn').addEventListener('click', () => {
@@ -4545,6 +4573,7 @@ CREATE TABLE projects (
       soloSource = null;
       disabledSources = new Set();
       detailEl.classList.remove('open');
+      syncDetailToggle();
       rebuildDataset(true);
       closeSqlModal();
       toast(`Parsed ${extracted.length} tables from ${srcName}`);
@@ -4561,6 +4590,7 @@ CREATE TABLE projects (
       soloSource = null;
       disabledSources = new Set();
       detailEl.classList.remove('open');
+      syncDetailToggle();
       data = generate8kCorpus();
       rebuildDataset(true);
       closeSqlModal();
@@ -4601,6 +4631,7 @@ CREATE TABLE payslips (
       soloSource = null;
       disabledSources = new Set();
       detailEl.classList.remove('open');
+      syncDetailToggle();
       data = cloneData(DEFAULT_DATA);
       rebuildDataset(true);
       closeSqlModal();

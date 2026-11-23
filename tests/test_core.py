@@ -231,6 +231,11 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("labelMode === 'smart' && !it.matches && !isNear", html)
         self.assertIn("rgba(251, 191, 36, 0.13)", html)
         self.assertIn("rgba(100, 116, 139, 0.13)", html)
+        # 0.2.31: header × removed entirely; the inspector folds via an
+        # edge-mounted seam handle, the right-side twin of #sideToggle
+        self.assertIn("syncDetailToggle", html)
+        self.assertNotIn("closeDetail", html)
+        self.assertIn("inspector-collapsed", html)
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows
