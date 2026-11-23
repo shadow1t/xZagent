@@ -214,6 +214,13 @@ class TestIndexRankGraph(unittest.TestCase):
         # spread + density factors + fitted zoom) instead of one clumped ball
         self.assertIn("tableGalaxySpread", html)
         self.assertIn("fitTableGalaxyZoom", html)
+        # 0.2.28: edge-attached sidebar handle (not the far corner), a
+        # collapsible inspector rail that keeps the selection, and auto-spin
+        # off by default so the user interacts with a still canvas
+        self.assertIn("syncSideToggle", html)
+        self.assertIn("collapseDetail", html)
+        self.assertIn("reopenDetail", html)
+        self.assertIn("let autoSpin = false", html)
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows

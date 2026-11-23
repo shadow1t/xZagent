@@ -468,6 +468,37 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     #side.closed { margin-left: -288px; }
 
+    /* Edge-attached sidebar handle: rides the sidebar seam (vertically
+       centered), tucks to the screen edge when the sidebar is closed */
+    #sideToggle {
+      position: absolute;
+      top: 50%;
+      left: 288px;
+      width: 20px;
+      height: 64px;
+      margin: 0;
+      padding: 0;
+      transform: translateY(-50%);
+      border: 1px solid var(--border-strong);
+      border-left: none;
+      border-radius: 0 10px 10px 0;
+      background: linear-gradient(180deg, #17233b, #0f172c);
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 26;
+      transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1), color 0.14s, border-color 0.14s;
+    }
+
+    #sideToggle:hover {
+      color: #fff;
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #1d2f52, #14213c);
+    }
+
+    body.side-closed #sideToggle { left: 0; }
+
     #side-tools {
       flex: none;
       padding: 8px 10px;
@@ -921,11 +952,89 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     #detail.open {
-      width: 385px;
-      min-width: 330px;
+      width: clamp(300px, 34vw, 385px);
+      min-width: 300px;
       opacity: 1;
       border-left-width: 1px;
       box-shadow: -8px 0 30px rgba(0, 0, 0, 0.48);
+    }
+
+    /* Collapsed rail: the inspector folds to a slim tab, selection intact */
+    #detail.open.collapsed { width: 42px; min-width: 42px; }
+
+    #detail.open.collapsed .detail-header,
+    #detail.open.collapsed .detail-body { display: none; }
+
+    .detail-rail {
+      display: none;
+      flex: 1 1 auto;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 0;
+      overflow: hidden;
+    }
+
+    #detail.collapsed .detail-rail { display: flex; }
+
+    #reopenDetail {
+      background: rgba(30, 41, 59, 0.85);
+      color: var(--text-muted);
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-size: 16px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      transition: all 0.14s;
+    }
+
+    #reopenDetail:hover {
+      background: #1d4ed8;
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .rail-name {
+      writing-mode: vertical-rl;
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-height: 70%;
+      white-space: nowrap;
+    }
+
+    .detail-actions {
+      display: flex;
+      gap: 6px;
+      flex: none;
+    }
+
+    #collapseDetail {
+      background: rgba(30, 41, 59, 0.85);
+      color: var(--text-muted);
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-size: 16px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      transition: all 0.14s;
+    }
+
+    #collapseDetail:hover {
+      background: #1d4ed8;
+      color: #fff;
+      border-color: var(--accent);
     }
 
     .detail-header {
@@ -1495,7 +1604,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
        TOP BAR
        ===================================================================== -->
   <header id="top">
-    <button id="sideToggle" class="btn" title="Toggle sidebar">☰</button>
     <div class="brand">
       <div class="brand-icon">🧭</div>
       <span>DB Schema Explorer</span>
@@ -1518,7 +1626,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="btn-group">
       <button id="vEdges" class="btn active">🔗 Edges: On</button>
       <button id="vLabels" class="btn">🏷 Labels: Smart</button>
-      <button id="vSpin" class="btn active" title="Toggle gentle auto-rotation">⟳ Spin</button>
+      <button id="vSpin" class="btn off" title="Toggle gentle auto-rotation">⟳ Spin: Off</button>
       <button id="openSqlBtn" class="btn primary-sql" title="Paste SQL or test 8,000-table stress mode">＋ SQL / 8K Test</button>
     </div>
   </header>
@@ -1540,6 +1648,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </div>
       <div id="side-list"></div>
     </aside>
+
+    <!-- Edge-attached sidebar handle: hugs the sidebar seam, tucks to the
+         screen edge when collapsed (professional panel toggle) -->
+    <button id="sideToggle" title="Collapse sidebar">‹</button>
 
     <!-- Central Stage -->
     <main id="content">
@@ -1592,10 +1704,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               <h2 id="tname">table_name</h2>
               <div id="tsrcc" class="srchip"><span class="sdot"></span><span id="tsrcc-txt"></span></div>
             </div>
-            <button id="closeDetail" title="Close inspector &amp; exit focus (Esc)">×</button>
+            <div class="detail-actions">
+              <button id="collapseDetail" title="Collapse inspector (keeps the selection)">«</button>
+              <button id="closeDetail" title="Close inspector &amp; exit focus (Esc)">×</button>
+            </div>
           </div>
           <div class="detail-stats" id="tstats"></div>
           <div class="detail-mode-bar" id="detail-mode-bar"></div>
+        </div>
+        <!-- Slim rail shown only while collapsed: reopens without losing state -->
+        <div class="detail-rail" id="detail-rail">
+          <button id="reopenDetail" title="Open inspector">»</button>
+          <span class="rail-name" id="rail-name"></span>
         </div>
         <div class="detail-body">
           <div class="sec-title">
@@ -1756,7 +1876,7 @@ CREATE TABLE projects (
     let disabledSources = new Set();
     let labelMode = 'smart';     // 'smart' | 'all' | 'off'
     let showEdges = true;
-    let autoSpin = true;
+    let autoSpin = false;       // the user interacts first; spin is opt-in
     let tool = 'rotate';         // 'rotate' | 'pan'
     let searchQuery = '';
 
@@ -3323,6 +3443,7 @@ CREATE TABLE projects (
     }
 
     function renderInspector(t) {
+      detailEl.classList.remove('collapsed');
       const color = sColor[t.source] || '#3b82f6';
       document.getElementById('tname').textContent = t.name;
 
@@ -3471,6 +3592,7 @@ CREATE TABLE projects (
     function exitFocus() {
       selectedKey = null;
       detailEl.classList.remove('open');
+      detailEl.classList.remove('collapsed');
       document.querySelectorAll('.titem.sel, .card.sel').forEach(el => el.classList.remove('sel'));
       updateStageHud();
       requestAnimationFrame(() => {
@@ -3629,7 +3751,7 @@ CREATE TABLE projects (
           `<span class="nfk">${t.fks.length} fk</span>`;
         item.addEventListener('click', () => {
           selectTable(k);
-          if (window.innerWidth <= 960) sideEl.classList.add('closed');
+          if (window.innerWidth <= 960) { sideEl.classList.add('closed'); syncSideToggle(); }
         });
         frag.appendChild(item);
       }
@@ -3686,7 +3808,7 @@ CREATE TABLE projects (
           e.preventDefault();
           e.stopPropagation();
           drillIntoDatabase(s);
-          if (window.innerWidth <= 960) sideEl.classList.add('closed');
+          if (window.innerWidth <= 960) { sideEl.classList.add('closed'); syncSideToggle(); }
         });
         sum.appendChild(soloBtn);
         det.appendChild(sum);
@@ -4093,15 +4215,37 @@ CREATE TABLE projects (
       autoSpin = !autoSpin;
       e.currentTarget.classList.toggle('active', autoSpin);
       e.currentTarget.classList.toggle('off', !autoSpin);
+      e.currentTarget.textContent = autoSpin ? '⟳ Spin: On' : '⟳ Spin: Off';
       toast(autoSpin ? 'Auto-rotation enabled' : 'Auto-rotation paused');
     });
 
+    /* Sidebar edge-handle: body class + chevron follow the sidebar state */
+    function syncSideToggle() {
+      const closed = sideEl.classList.contains('closed');
+      document.body.classList.toggle('side-closed', closed);
+      const st = document.getElementById('sideToggle');
+      st.textContent = closed ? '›' : '‹';
+      st.title = closed ? 'Open sidebar' : 'Collapse sidebar';
+    }
+
     document.getElementById('sideToggle').addEventListener('click', () => {
       sideEl.classList.toggle('closed');
+      syncSideToggle();
       setTimeout(resizeCanvas, 230);
     });
 
     document.getElementById('closeDetail').addEventListener('click', () => exitFocus());
+
+    /* Collapsible inspector: fold to a slim rail, keep the selection intact */
+    function setDetailCollapsed(c) {
+      detailEl.classList.toggle('collapsed', c);
+      if (c) {
+        const r = selectedKey ? byKey[selectedKey] : null;
+        document.getElementById('rail-name').textContent = r ? r.name : '';
+      }
+    }
+    document.getElementById('collapseDetail').addEventListener('click', () => setDetailCollapsed(true));
+    document.getElementById('reopenDetail').addEventListener('click', () => setDetailCollapsed(false));
 
     document.getElementById('zIn').addEventListener('click', () => {
       anim = null;
@@ -4418,7 +4562,7 @@ CREATE TABLE payslips (
        ===================================================================== */
     window.addEventListener('load', () => {
       initStars();
-      if (window.innerWidth <= 960) sideEl.classList.add('closed');
+      if (window.innerWidth <= 960) { sideEl.classList.add('closed'); syncSideToggle(); }
 
       const ro = new ResizeObserver(() => resizeCanvas());
       ro.observe(graphWrapEl);
