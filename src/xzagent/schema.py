@@ -2356,6 +2356,20 @@ CREATE TABLE projects (
       return (src && isSourceVisible(src)) ? src : null;
     }
 
+    /* Layout knobs for a focused DB's table galaxy. A 200-table DB cannot
+       reuse the 67-orb overview density: more planets => a wider orbit
+       (capped so the perspective divide stays stable) plus a proportionally
+       smaller fitted zoom and shrunken planet radii, so big databases read
+       as a spread-out galaxy instead of one clumped ball of touching orbs. */
+    function tableGalaxySpread(count) {
+      return Math.min(1.42, Math.max(1, Math.sqrt(count / 70)));
+    }
+    function fitTableGalaxyZoom(source) {
+      const src = source || galaxyFocusDb();
+      if (!src || !sourceTableMap[src]) return fitBaseZoom();
+      return Math.max(0.34, fitBaseZoom() / tableGalaxySpread(sourceTableMap[src].length));
+    }
+
     /* Undo any 3D-focus isolation before drawing a table galaxy: every visible
        table goes back to its sphere spot at full alpha, ready to be a planet. */
     function restoreGalaxyTablePositions() {
@@ -2584,6 +2598,15 @@ CREATE TABLE projects (
       const selNode = selectedKey ? byKey[selectedKey] : null;
       const hoverNode = (hoveredItem && hoveredItem.kind === 'table') ? hoveredItem : null;
 
+      // Gather this DB's visible tables first: spread & density adapt to count
+      const tNodes = [];
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (n.source === source && n.alpha > 0.02) tNodes.push(n);
+      }
+      const tgSpread = tableGalaxySpread(tNodes.length);
+      const tgDens = Math.min(1, Math.max(0.5, Math.sqrt(90 / Math.max(1, tNodes.length))));
+
       let nearSet = null;
       if (selNode) {
         nearSet = new Set([selNode.key]);
@@ -2598,23 +2621,23 @@ CREATE TABLE projects (
         }
       }
 
-      for (let i = 0; i < nodes.length; i++) {
-        const n = nodes[i];
-        if (n.source !== source || n.alpha <= 0.02) continue;
-        const p = project3D(n.cur.x, n.cur.y, n.cur.z);
+      for (let i = 0; i < tNodes.length; i++) {
+        const n = tNodes[i];
+        const p = project3D(n.cur.x * tgSpread, n.cur.y * tgSpread, n.cur.z * tgSpread);
         const matches = hasSearch && matchTable(n, searchQuery);
         const item = { node: n, sx: p.sx, sy: p.sy, z: p.z, f: p.f, r: 6, matches: matches };
         projList.push(item);
         pMap[n.key] = item;
       }
 
-      // Planet radius by FK connectivity (degree), same sizing family as DB orbs
+      // Planet radius by FK connectivity (degree), same sizing family as DB orbs;
+      // tgDens keeps a 200+ planet DB airy instead of a clump of touching balls
       const zoomScale = Math.min(1.75, Math.max(0.55, Math.sqrt(zoom)));
       for (let i = 0; i < projList.length; i++) {
         const it = projList[i];
         const n = it.node;
         const boost = (selectedKey === n.key) ? 1.26 : 1;
-        const degR = Math.min(26, 7.5 + Math.log2((n.deg || 0) + 2) * 3.2);
+        const degR = Math.min(26, (7.5 + Math.log2((n.deg || 0) + 2) * 3.2) * tgDens);
         it.r = Math.max(4.5, degR * boost * Math.max(0.55, it.f) * zoomScale);
       }
 
@@ -3271,9 +3294,10 @@ CREATE TABLE projects (
       requestAnimationFrame(() => {
         resizeCanvas();
         if (mode === 'galaxy') {
-          if (galaxyFocusDb()) {
+          const focSrc = galaxyFocusDb();
+          if (focSrc) {
             restoreGalaxyTablePositions();
-            startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 360);
+            startTransition({ rx: -0.26, ry: 0.52 }, fitTableGalaxyZoom(focSrc), { x: 0, y: 0 }, 360);
           } else needsRender = true;
         } else if (focusIsolate) {
           computeFocusTargets(key);
@@ -4017,8 +4041,9 @@ CREATE TABLE projects (
         requestAnimationFrame(() => {
           resizeCanvas();
           if (m === 'galaxy') {
-            if (galaxyFocusDb()) restoreGalaxyTablePositions();
-            startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 360);
+            const focSrc = galaxyFocusDb();
+            if (focSrc) restoreGalaxyTablePositions();
+            startTransition({ rx: -0.26, ry: 0.52 }, focSrc ? fitTableGalaxyZoom(focSrc) : fitBaseZoom(), { x: 0, y: 0 }, 360);
             if (galaxyFocusDb()) {
               const tt = selectedKey ? byKey[selectedKey] : null;
               if (tt) {

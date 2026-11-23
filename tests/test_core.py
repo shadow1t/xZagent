@@ -210,6 +210,10 @@ class TestIndexRankGraph(unittest.TestCase):
         # that DB's TABLES as planets instead of bouncing back to the DB overview
         self.assertIn("renderTableGalaxy", html)
         self.assertIn("galaxyFocusDb", html)
+        # 0.2.27: a big focused DB spreads its table planets out (adaptive
+        # spread + density factors + fitted zoom) instead of one clumped ball
+        self.assertIn("tableGalaxySpread", html)
+        self.assertIn("fitTableGalaxyZoom", html)
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows
