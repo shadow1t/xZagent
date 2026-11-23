@@ -119,6 +119,34 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("companies", names)
         self.assertIn("users", names)
 
+    def test_db_schema_sql_inline_references(self):
+        # Postgres-dump style inline "col INT REFERENCES other(id)" must be
+        # extracted too, not only table-level FOREIGN KEY (...) constraints
+        from xzagent.schema import parse_sql_schema
+        sql = (
+            "CREATE TABLE teams (\n"
+            "  id INTEGER PRIMARY KEY,\n"
+            "  -- a line comment\n"
+            "  name TEXT\n"
+            ");\n"
+            "CREATE TABLE players (\n"
+            "  id INTEGER PRIMARY KEY,\n"
+            "  /* block comment */\n"
+            "  team_id INTEGER REFERENCES teams(id),\n"
+            "  mentor_id INTEGER NOT NULL REFERENCES players(id),\n"
+            "  arena_id INTEGER,\n"
+            "  FOREIGN KEY (arena_id) REFERENCES arenas(id)\n"
+            ");\n"
+        )
+        tables = parse_sql_schema(sql)
+        self.assertEqual(tables["players"]["fks"], [
+            {"column": "team_id", "ref_table": "teams"},
+            {"column": "mentor_id", "ref_table": "players"},
+            {"column": "arena_id", "ref_table": "arenas"},
+        ])
+        self.assertEqual(tables["players"]["columns"],
+                         ["id", "team_id", "mentor_id", "arena_id"])
+
     def test_db_schema_django_migration_and_html(self):
         from xzagent.schema import parse_django_migrations, schema_html
         with open(os.path.join(self.root, "shop/migrations/0001_initial.py"), encoding="utf-8") as fh:
@@ -169,10 +197,12 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("FRONT_Z", html)          # front-only auto node labels
         self.assertIn("'elabel'", html)        # fk column labels on hot edges
         self.assertIn("updateViewBox", html)   # instant zoom/pan, no rebuild
-        self.assertIn("pairOf", html)           # duplicate fk lines merged per pair
+        self.assertIn("pairMap", html)           # duplicate fk lines merged per pair
         self.assertIn("marker-end", html)       # direction arrowheads on hot edges
-        self.assertIn("focusLayout", html)       # hub-centered star layout on select
-        self.assertIn("restoreSphere", html)     # back to planet positions on reset
+        self.assertIn("computeFocusTargets", html)  # hub-centered sunflower layout on select
+        self.assertIn("computeSphereTargets", html)  # back to planet positions on reset
+        self.assertIn("ensurePairLabels", html)  # lazy fk labels for huge schemas
+        self.assertIn("autoSpin", html)          # spin guard for large corpora
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows
