@@ -188,20 +188,20 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("function esc(", html)
         # sidebar group folding: open-all/close-all + collapsed by default
         self.assertIn("foldBtn", html)
-        self.assertIn("sideItem", html)
+        self.assertIn("populateSideGroup", html)
         # 0.2.17: identity = (source, name), duplicate table names must not collide,
         # and double-clicking a legend chip solos one database
         self.assertIn("function keyOf(", html)
         self.assertIn("byKey", html)
         self.assertIn("soloSource", html)
-        self.assertIn("FRONT_Z", html)          # front-only auto node labels
-        self.assertIn("'elabel'", html)        # fk column labels on hot edges
-        self.assertIn("updateViewBox", html)   # instant zoom/pan, no rebuild
-        self.assertIn("pairMap", html)           # duplicate fk lines merged per pair
-        self.assertIn("marker-end", html)       # direction arrowheads on hot edges
-        self.assertIn("computeFocusTargets", html)  # hub-centered sunflower layout on select
-        self.assertIn("computeSphereTargets", html)  # back to planet positions on reset
-        self.assertIn("ensurePairLabels", html)  # lazy fk labels for huge schemas
+        self.assertIn("createLabelPlacer", html)  # collision-free label culling
+        self.assertIn("drawLabelPill", html)      # fk column labels on hot edges
+        self.assertIn("resizeCanvas", html)       # canvas backing-store sizing
+        self.assertIn("pairMap", html)            # duplicate fk lines merged per pair
+        self.assertIn("drawArrowHead", html)      # direction arrowheads on hot edges
+        self.assertIn("computeFocusTargets", html)  # hub-centered layout on select
+        self.assertIn("computeSphereTargets", html)  # back to sphere positions on reset
+        self.assertIn("galaxyNodes", html)        # DB Galaxy orbit for huge corpora
         self.assertIn("autoSpin", html)          # spin guard for large corpora
 
     def test_schema_rows_filter_only_exclude(self):

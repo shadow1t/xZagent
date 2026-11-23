@@ -42,13 +42,16 @@ ctxp schema [ROOT] --only db.sqlite3 --html s.html
                                   #   contains the substring (repeatable);
                                   #   --exclude SRC drops instead
 ctxp schema [ROOT] --html s.html # same schema as an interactive HTML map
-                                  #   (3D globe + sunflower focus + ER cards;
-                                  #   click a table to center it with its
-                                  #   direct relations on a sunflower disc,
-                                  #   neighbor-to-neighbor edges dimmed;
-                                  #   Paste SQL modal adds tables live;
-                                  #   huge corpora: auto-spin off, lazy
-                                  #   labels, still one self-contained file)
+                                  #   (Canvas 2D engine: 3D table sphere +
+                                  #   DB Galaxy overview for many databases +
+                                  #   paginated ER cards; click a table to
+                                  #   focus it with its direct relations,
+                                  #   double-click a database to drill in;
+                                  #   Paste SQL modal adds tables live and
+                                  #   can simulate ~8,300 tables across 67
+                                  #   databases; lazy sidebar/cards keep huge
+                                  #   corpora fast, still one self-contained
+                                  #   file)
 ctxp serve [ROOT]                 # MCP server (stdio) for AI apps
 ctxp update [SRC]                 # update the CLI itself (see below)
 ```

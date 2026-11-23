@@ -153,17 +153,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DB Schema Explorer — 3D Interactive Visualizer</title>
+  <title>DB Schema Explorer — High-Scale 3D Engine</title>
   <style>
     /* =====================================================================
        DESIGN TOKENS & RESET
-       Modern dark slate/navy glassmorphism with high legibility & depth
+       High-contrast dark navy glassmorphism optimized for large schemas
        ===================================================================== */
     :root {
-      --bg-deep: #070d1a;
-      --bg-mid: #0d1629;
-      --bg-surface: rgba(15, 23, 42, 0.86);
-      --bg-surface-solid: #0f172a;
+      --bg-deep: #060b16;
+      --bg-mid: #0c1528;
+      --bg-surface: rgba(15, 23, 42, 0.9);
       --bg-elevated: #17233b;
       --border: #1e2e4d;
       --border-strong: #33486e;
@@ -171,17 +170,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       --text-muted: #94a3b8;
       --text-dim: #64748b;
       --accent: #3b82f6;
-      --accent-glow: rgba(59, 130, 246, 0.35);
       --hot: #f97316;
       --hot-soft: #fdba74;
       --amber: #fbbf24;
       --emerald: #34d399;
       --cyan: #22d3ee;
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.55);
-      --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.35);
+      --violet: #a855f7;
+      --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.58);
+      --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.38);
     }
 
     * {
@@ -195,9 +191,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       width: 100%;
       height: 100%;
       overflow: hidden;
-      /* Segoe UI first: crisp native rendering on Windows */
       font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: radial-gradient(1200px 680px at 65% -10%, #152546 0%, #091020 55%, #060a14 100%);
+      background: radial-gradient(1200px 680px at 65% -10%, #152546 0%, #091020 55%, #050912 100%);
       color: var(--text);
       font-size: 14px;
       line-height: 1.45;
@@ -208,7 +203,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       flex-direction: column;
     }
 
-    /* Custom subtle scrollbars */
     ::-webkit-scrollbar { width: 7px; height: 7px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #263656; border-radius: 999px; }
@@ -221,9 +215,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       flex: none;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 9px 14px;
-      background: linear-gradient(180deg, rgba(19, 31, 56, 0.96), rgba(13, 22, 41, 0.95));
+      gap: 7px;
+      padding: 8px 14px;
+      background: linear-gradient(180deg, rgba(19, 31, 56, 0.97), rgba(12, 21, 40, 0.96));
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
@@ -236,7 +230,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       align-items: center;
       gap: 8px;
       font-weight: 700;
-      font-size: 15px;
+      font-size: 14.5px;
       letter-spacing: 0.2px;
       color: #e0f2fe;
       white-space: nowrap;
@@ -258,18 +252,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       position: relative;
       display: flex;
       align-items: center;
-      flex: 0 1 250px;
-      min-width: 170px;
+      flex: 0 1 235px;
+      min-width: 160px;
     }
 
     .search-wrap input {
       width: 100%;
-      background: rgba(7, 13, 26, 0.85);
+      background: rgba(6, 11, 22, 0.88);
       color: var(--text);
       border: 1px solid var(--border-strong);
       border-radius: 10px;
-      padding: 7px 34px 7px 12px;
-      font-size: 13px;
+      padding: 6.5px 32px 6.5px 11px;
+      font-size: 12.5px;
       outline: none;
       transition: border-color 0.15s, box-shadow 0.15s;
     }
@@ -282,12 +276,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .search-kbd {
       position: absolute;
       right: 8px;
-      font-size: 11px;
+      font-size: 10.5px;
       color: var(--text-dim);
       background: #17233b;
       border: 1px solid var(--border-strong);
       border-radius: 5px;
-      padding: 1px 6px;
+      padding: 1px 5px;
       pointer-events: none;
     }
 
@@ -307,11 +301,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .search-clear.visible + .search-kbd { display: none; }
 
     .chip {
-      background: rgba(30, 41, 59, 0.78);
+      background: rgba(30, 41, 59, 0.8);
       border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 4px 11px;
-      font-size: 12px;
+      padding: 4px 10px;
+      font-size: 11.5px;
       color: var(--text-muted);
       white-space: nowrap;
       display: inline-flex;
@@ -324,7 +318,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .btn-group {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       flex-wrap: wrap;
     }
 
@@ -333,8 +327,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #cbd5e1;
       border: 1px solid var(--border-strong);
       border-radius: 9px;
-      padding: 6px 11px;
-      font-size: 12.5px;
+      padding: 6px 10px;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
       display: inline-flex;
@@ -358,6 +352,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       box-shadow: 0 2px 12px rgba(37, 99, 235, 0.35);
     }
 
+    .btn.galaxy-active {
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      border-color: #c084fc;
+      color: #ffffff;
+      box-shadow: 0 2px 12px rgba(124, 58, 237, 0.38);
+    }
+
     .btn.off {
       background: rgba(15, 23, 42, 0.65);
       color: var(--text-dim);
@@ -375,8 +376,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       box-shadow: 0 2px 12px rgba(14, 165, 233, 0.35);
     }
 
-    .top-spacer { flex: 1; }
-
     /* =====================================================================
        MULTI-DATABASE LEGEND BAR
        ===================================================================== */
@@ -384,11 +383,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       flex: none;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 14px;
-      background: rgba(10, 17, 32, 0.92);
+      gap: 7px;
+      padding: 6px 14px;
+      background: rgba(10, 17, 32, 0.94);
       border-bottom: 1px solid var(--border);
-      font-size: 12px;
+      font-size: 11.5px;
       overflow-x: auto;
       white-space: nowrap;
       scrollbar-width: thin;
@@ -398,20 +397,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .lg {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
+      gap: 6px;
       background: rgba(18, 29, 52, 0.85);
       border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 4px 11px;
+      padding: 3.5px 10px;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.14s ease;
       color: #cbd5e1;
       user-select: none;
     }
 
     .lg:hover {
       border-color: #60a5fa;
-      background: rgba(30, 48, 84, 0.9);
+      background: rgba(30, 48, 84, 0.92);
     }
 
     .lg.off {
@@ -421,20 +420,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     .lg.solo {
       border-color: #60a5fa;
-      background: rgba(37, 99, 235, 0.22);
+      background: rgba(37, 99, 235, 0.25);
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
-      color: #fff;
+      color: #ffffff;
     }
 
     .lg .dot {
-      width: 9px;
-      height: 9px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       flex: none;
-      box-shadow: 0 0 8px currentColor;
+      box-shadow: 0 0 7px currentColor;
     }
 
-    .lg .n { color: var(--text-dim); font-size: 11px; }
+    .lg .n { color: var(--text-dim); font-size: 10.5px; }
 
     .legend-hint {
       margin-left: auto;
@@ -454,22 +453,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       overflow: hidden;
     }
 
-    /* Collapsible Left Sidebar */
+    /* Collapsible Left Sidebar (Lazy-loaded DOM) */
     #side {
-      width: 286px;
-      min-width: 286px;
-      background: rgba(12, 20, 38, 0.95);
+      width: 288px;
+      min-width: 288px;
+      background: rgba(11, 19, 36, 0.96);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s ease;
+      transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 20;
     }
 
-    #side.closed {
-      margin-left: -286px;
-    }
+    #side.closed { margin-left: -288px; }
 
     #side-tools {
       flex: none;
@@ -477,8 +474,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      background: rgba(15, 25, 46, 0.95);
+      gap: 6px;
+      background: rgba(15, 25, 46, 0.96);
       border-bottom: 1px solid var(--border);
     }
 
@@ -493,10 +490,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #cbd5e1;
       border: 1px solid var(--border-strong);
       border-radius: 7px;
-      padding: 4px 10px;
+      padding: 3.5px 9px;
       font-size: 11px;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.14s;
     }
 
     #side-tools button:hover {
@@ -507,41 +504,39 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     #side-list {
       flex: 1 1 auto;
       overflow-y: auto;
-      padding: 8px;
+      padding: 7px;
     }
 
-    details.src {
-      margin-bottom: 6px;
-    }
+    details.src { margin-bottom: 4px; }
 
     details.src summary {
       cursor: pointer;
       color: #bfdbfe;
       font-size: 12px;
-      padding: 7px 9px;
-      border-radius: 9px;
+      padding: 6.5px 8px;
+      border-radius: 8px;
       list-style: none;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
       font-weight: 600;
       user-select: none;
-      transition: background 0.15s;
+      transition: background 0.14s;
     }
 
     details.src summary::-webkit-details-marker { display: none; }
-    details.src summary:hover { background: rgba(30, 41, 59, 0.75); }
+    details.src summary:hover { background: rgba(30, 41, 59, 0.8); }
     details.src summary .caret {
       font-size: 9px;
       color: var(--text-dim);
-      transition: transform 0.15s;
+      transition: transform 0.14s;
       width: 10px;
       text-align: center;
     }
     details.src[open] summary .caret { transform: rotate(90deg); }
     details.src summary .dot {
-      width: 9px;
-      height: 9px;
+      width: 8.5px;
+      height: 8.5px;
       border-radius: 50%;
       flex: none;
     }
@@ -556,12 +551,29 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       font-weight: 400;
       font-size: 11px;
     }
+    details.src summary .solo-mini {
+      background: rgba(59, 130, 246, 0.14);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 10px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: all 0.12s;
+    }
+    details.src summary .solo-mini:hover {
+      opacity: 1;
+      background: #2563eb;
+      color: #fff;
+      border-color: #60a5fa;
+    }
 
     .titem {
-      padding: 7px 10px;
-      border-radius: 8px;
+      padding: 6.5px 9px;
+      border-radius: 7px;
       cursor: pointer;
-      font-size: 12.5px;
+      font-size: 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -590,7 +602,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     .titem .nfk {
       color: var(--text-dim);
-      font-size: 10.5px;
+      font-size: 10px;
       background: rgba(15, 23, 42, 0.65);
       padding: 1px 6px;
       border-radius: 999px;
@@ -602,8 +614,22 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #e0f2fe;
     }
 
+    .side-more-btn {
+      width: calc(100% - 12px);
+      margin: 4px 0 4px 10px;
+      padding: 6px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px dashed var(--border-strong);
+      border-radius: 7px;
+      color: #93c5fd;
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .side-more-btn:hover { background: rgba(37, 99, 235, 0.2); }
+
     /* =====================================================================
-       CENTRAL STAGE (#content) — PERMANENT 3D CANVAS + INSPECTOR DRAWER
+       CENTRAL STAGE — HIGH-SPEED 60FPS HTML5 CANVAS + INSPECTOR DRAWER
        ===================================================================== */
     #content {
       flex: 1 1 auto;
@@ -614,7 +640,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       overflow: hidden;
     }
 
-    /* Permanent 3D Graph Container */
     #graph-wrap {
       flex: 1 1 auto;
       min-width: 0;
@@ -622,11 +647,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       position: relative;
       display: flex;
       flex-direction: column;
-      background: radial-gradient(750px 460px at 50% 45%, #122140 0%, #091122 65%, #060b16 100%);
+      background: radial-gradient(780px 480px at 50% 46%, #11203e 0%, #081020 65%, #050a14 100%);
       overflow: hidden;
     }
 
-    #graph {
+    #graphCanvas {
       width: 100%;
       height: 100%;
       display: block;
@@ -635,141 +660,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       cursor: grab;
     }
 
-    #graph.grabbing { cursor: grabbing; }
-    #graph.pan-mode { cursor: move; }
-    #graph.no-edges .edge:not(.hot):not(.dimrel) { display: none; }
-
-    /* SVG Elements Styling */
-    .bg-ring {
-      fill: none;
-      stroke: rgba(96, 165, 250, 0.08);
-      stroke-width: 1;
-      stroke-dasharray: 4 6;
-      pointer-events: none;
-    }
-
-    .bg-star {
-      fill: #93c5fd;
-      pointer-events: none;
-    }
-
-    .edge {
-      stroke: #475569;
-      fill: none;
-      pointer-events: none;
-      transition: stroke 0.2s;
-    }
-
-    .edge.cross {
-      stroke: var(--amber);
-      stroke-dasharray: 7 5;
-    }
-
-    /* neighbor-to-neighbor relations inside the focus view: visible but hushed */
-    .edge.dimrel {
-      stroke: #64748b;
-      stroke-dasharray: 2 4;
-    }
-
-    .edge.hot {
-      stroke: var(--hot);
-      stroke-dasharray: none;
-      filter: drop-shadow(0 0 5px rgba(249, 115, 22, 0.65));
-    }
-
-    .edge.hot.cross {
-      stroke: var(--amber);
-      stroke-dasharray: 7 5;
-      filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.65));
-    }
-
-    .node {
-      cursor: pointer;
-    }
-
-    .node .halo {
-      fill: none;
-      stroke: var(--sc, #3b82f6);
-      stroke-width: 1.5;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.18s;
-    }
-
-    .node:hover .halo,
-    .node.sel .halo,
-    .node.match .halo {
-      opacity: 0.65;
-    }
-
-    .node.sel .halo {
-      stroke: var(--hot);
-      stroke-width: 2.5;
-    }
-
-    .node.match .halo {
-      stroke: var(--cyan);
-      stroke-width: 2.5;
-    }
-
-    .node .core {
-      fill: var(--sc, #3b82f6);
-      stroke: rgba(255, 255, 255, 0.65);
-      stroke-width: 1.4;
-      transition: fill 0.15s, stroke 0.15s;
-    }
-
-    .node:hover .core {
-      stroke: #ffffff;
-      stroke-width: 2.2;
-    }
-
-    .node.sel .core {
-      fill: var(--hot);
-      stroke: #ffedd5;
-      stroke-width: 2.8;
-      filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.8));
-    }
-
-    .node .shine {
-      fill: rgba(255, 255, 255, 0.28);
-      pointer-events: none;
-    }
-
-    .node .nlabel {
-      fill: #f1f5f9;
-      font-size: 12px;
-      font-weight: 600;
-      text-anchor: middle;
-      pointer-events: none;
-      paint-order: stroke;
-      stroke: #070d1a;
-      stroke-width: 4.5px;
-      stroke-linejoin: round;
-      transition: opacity 0.15s;
-    }
-
-    .node.sel .nlabel {
-      fill: #ffedd5;
-      font-size: 13.5px;
-      font-weight: 700;
-    }
-
-    .elabel {
-      fill: var(--hot-soft);
-      font-size: 10.5px;
-      font-weight: 600;
-      text-anchor: middle;
-      pointer-events: none;
-      paint-order: stroke;
-      stroke: #070d1a;
-      stroke-width: 4.5px;
-      stroke-linejoin: round;
-    }
-
-    .elabel.cross {
-      fill: #fde68a;
-    }
+    #graphCanvas.grabbing { cursor: grabbing; }
+    #graphCanvas.pan-mode { cursor: move; }
+    #graphCanvas.pointer { cursor: pointer; }
 
     /* Floating Canvas Controls (#ctl) */
     #ctl {
@@ -811,47 +704,49 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #ffffff;
     }
 
-    /* Floating Focus Banner (top-left of graph) */
-    #focus-hud {
+    /* Floating Top-Left Context HUD Pill */
+    #stage-hud {
       position: absolute;
       top: 14px;
       left: 14px;
-      display: none;
+      display: flex;
       align-items: center;
       gap: 8px;
       background: rgba(15, 23, 42, 0.88);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(249, 115, 22, 0.5);
+      border: 1px solid var(--border-strong);
       border-radius: 999px;
-      padding: 6px 12px 6px 14px;
+      padding: 6px 12px 6px 13px;
       box-shadow: var(--shadow-sm);
       z-index: 12;
       font-size: 12px;
       max-width: calc(100% - 80px);
     }
 
-    #focus-hud.visible { display: flex; }
+    #stage-hud.focus-style { border-color: rgba(249, 115, 22, 0.65); }
+    #stage-hud.galaxy-style { border-color: rgba(168, 85, 247, 0.65); }
 
-    #focus-hud .fdot {
+    #stage-hud .fdot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--hot);
-      box-shadow: 0 0 8px var(--hot);
+      background: var(--violet);
+      box-shadow: 0 0 8px currentColor;
       flex: none;
     }
 
-    #focus-hud .ftxt {
+    #stage-hud .ftxt {
       color: #f8fafc;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      font-weight: 500;
     }
 
-    #focus-hud button {
+    #stage-hud button {
       background: rgba(255, 255, 255, 0.1);
       color: #e2e8f0;
-      border: 1px solid rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 999px;
       padding: 3px 10px;
       font-size: 11px;
@@ -860,29 +755,79 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       transition: background 0.15s;
     }
 
-    #focus-hud button:hover {
+    #stage-hud button:hover {
       background: var(--accent);
       border-color: var(--accent);
     }
 
-    /* Subtle Bottom Canvas Hint Bar */
-    #canvas-hint {
+    /* Hover Tooltip Pill */
+    #hover-tip {
+      position: absolute;
+      pointer-events: none;
+      display: none;
+      background: rgba(9, 15, 28, 0.94);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      padding: 7px 11px;
+      font-size: 12px;
+      color: #f8fafc;
+      box-shadow: var(--shadow-sm);
+      z-index: 16;
+      max-width: 280px;
+    }
+
+    #hover-tip .ht-title {
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+
+    #hover-tip .ht-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex: none;
+    }
+
+    #hover-tip .ht-meta {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    /* Bottom-Left Hint + Performance Badge */
+    #canvas-footer {
       position: absolute;
       bottom: 12px;
       left: 14px;
-      background: rgba(10, 17, 32, 0.72);
-      backdrop-filter: blur(6px);
-      border: 1px solid rgba(30, 46, 77, 0.8);
-      border-radius: 999px;
-      padding: 5px 12px;
-      font-size: 11px;
-      color: var(--text-dim);
+      right: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       pointer-events: none;
       z-index: 10;
+      gap: 10px;
     }
 
+    .footer-pill {
+      background: rgba(9, 15, 28, 0.76);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(30, 46, 77, 0.85);
+      border-radius: 999px;
+      padding: 4.5px 12px;
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .footer-pill b { color: #34d399; font-weight: 600; }
+
     /* =====================================================================
-       SLEEK INSPECTOR DRAWER (#detail) — NEVER HIDES THE GRAPH
+       SLEEK INSPECTOR DRAWER (#detail)
        ===================================================================== */
     #detail {
       width: 0;
@@ -894,22 +839,22 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border-left: 0 solid var(--border);
       display: flex;
       flex-direction: column;
-      transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+      transition: width 0.24s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
       z-index: 18;
     }
 
     #detail.open {
-      width: 390px;
-      min-width: 340px;
+      width: 385px;
+      min-width: 330px;
       opacity: 1;
       border-left-width: 1px;
-      box-shadow: -8px 0 30px rgba(0, 0, 0, 0.45);
+      box-shadow: -8px 0 30px rgba(0, 0, 0, 0.48);
     }
 
     .detail-header {
       flex: none;
       padding: 14px 16px 12px;
-      background: linear-gradient(180deg, rgba(23, 35, 59, 0.9), rgba(15, 23, 42, 0.85));
+      background: linear-gradient(180deg, rgba(23, 35, 59, 0.92), rgba(15, 23, 42, 0.88));
       border-bottom: 1px solid var(--border);
     }
 
@@ -920,13 +865,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       gap: 10px;
     }
 
-    .detail-title-wrap {
-      min-width: 0;
-    }
+    .detail-title-wrap { min-width: 0; }
 
     #tname {
       margin: 0;
-      font-size: 18px;
+      font-size: 17.5px;
       font-weight: 700;
       color: #f8fafc;
       word-break: break-word;
@@ -963,7 +906,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       flex: none;
       display: grid;
       place-items: center;
-      transition: all 0.15s;
+      transition: all 0.14s;
     }
 
     #closeDetail:hover {
@@ -986,7 +929,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .sec-title {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.7px;
@@ -1019,14 +962,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     table.cols td {
-      padding: 8px 10px;
+      padding: 7.5px 10px;
       border-top: 1px solid rgba(30, 46, 77, 0.7);
       vertical-align: middle;
     }
 
-    table.cols tr:hover td {
-      background: rgba(30, 45, 76, 0.55);
-    }
+    table.cols tr:hover td { background: rgba(30, 45, 76, 0.55); }
 
     .col-cell {
       display: flex;
@@ -1151,20 +1092,30 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     /* =====================================================================
-       ER CARDS VIEW (#cards)
+       PAGINATED ER CARDS VIEW (#cards) — LAZY BUILT ONLY WHEN ACTIVE
        ===================================================================== */
-    #cards {
+    #cards-wrap {
       display: none;
       flex: 1 1 auto;
       overflow-y: auto;
       padding: 18px;
-      grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
-      gap: 14px;
-      align-content: start;
       background: radial-gradient(800px 400px at 50% 0%, #111f3c 0%, #081020 75%);
     }
 
-    #cards.visible { display: grid; }
+    #cards-wrap.visible { display: block; }
+
+    #cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+      gap: 14px;
+      align-content: start;
+    }
+
+    #cards-pager {
+      margin-top: 18px;
+      text-align: center;
+      padding-bottom: 24px;
+    }
 
     .card {
       background: rgba(15, 23, 42, 0.9);
@@ -1175,13 +1126,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     }
 
     .card:hover {
       border-color: #60a5fa;
-      transform: translateY(-3px);
+      transform: translateY(-2px);
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
     }
 
@@ -1255,7 +1206,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     /* =====================================================================
-       PASTE SQL MODAL
+       PASTE SQL & STRESS BENCHMARK MODAL
        ===================================================================== */
     #sqlModal {
       position: fixed;
@@ -1273,7 +1224,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     .modal-box {
       width: 100%;
-      max-width: 720px;
+      max-width: 740px;
       max-height: 90vh;
       background: #0f172a;
       border: 1px solid var(--border-strong);
@@ -1282,7 +1233,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      animation: modalPop 0.18s ease-out;
+      animation: modalPop 0.16s ease-out;
     }
 
     @keyframes modalPop {
@@ -1291,7 +1242,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .modal-head {
-      padding: 14px 18px;
+      padding: 13px 18px;
       background: #17233b;
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -1318,7 +1269,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     .modal-row {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
       flex-wrap: wrap;
     }
@@ -1334,11 +1285,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: var(--text);
       border: 1px solid var(--border-strong);
       border-radius: 8px;
-      padding: 7px 10px;
-      font-size: 13px;
+      padding: 6.5px 10px;
+      font-size: 12.5px;
       outline: none;
       flex: 1;
-      min-width: 180px;
+      min-width: 160px;
     }
 
     .modal-input:focus, .modal-textarea:focus {
@@ -1348,14 +1299,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     .modal-textarea {
       width: 100%;
-      min-height: 230px;
+      min-height: 210px;
       background: #070d1a;
       color: #e2e8f0;
       border: 1px solid var(--border-strong);
       border-radius: 10px;
       padding: 12px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 12.5px;
+      font-size: 12px;
       line-height: 1.5;
       resize: vertical;
       outline: none;
@@ -1394,14 +1345,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     /* =====================================================================
-       DEBOUNCED TOAST NOTIFICATION
+       TOAST NOTIFICATION
        ===================================================================== */
     #toast {
       position: fixed;
       bottom: 18px;
       left: 50%;
       transform: translateX(-50%) translateY(8px);
-      background: rgba(15, 23, 42, 0.94);
+      background: rgba(15, 23, 42, 0.95);
       backdrop-filter: blur(10px);
       border: 1px solid var(--border-strong);
       padding: 8px 16px;
@@ -1425,7 +1376,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     /* =====================================================================
-       RESPONSIVE ADAPTATIONS (TABLET & MOBILE)
+       RESPONSIVE ADAPTATIONS
        ===================================================================== */
     @media (max-width: 960px) {
       #side {
@@ -1450,14 +1401,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6);
       }
 
-      #canvas-hint { display: none; }
+      #canvas-hint-pill { display: none; }
       .legend-hint { display: none; }
     }
 
     @media (max-width: 600px) {
       #top { padding: 8px 10px; gap: 6px; }
       .search-wrap { flex: 1 1 100%; order: 10; }
-      .btn { padding: 6px 9px; font-size: 12px; }
+      .btn { padding: 5.5px 8.5px; font-size: 11.5px; }
       #ctl button { width: 34px; height: 34px; font-size: 15px; }
     }
   </style>
@@ -1482,15 +1433,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <span class="chip" id="cnt">0 tables</span>
 
     <div class="btn-group">
-      <button id="vGraph" class="btn active">🕸 3D Network</button>
-      <button id="vCards" class="btn">🗂 ER Cards</button>
+      <button id="vGalaxy" class="btn" title="Overview: 1 orb per database (click a DB to drill in)">🌌 DB Galaxy</button>
+      <button id="vGraph" class="btn active" title="3D Table Network on HTML5 Canvas">🕸 3D Tables</button>
+      <button id="vCards" class="btn" title="Paginated ER Cards">🗂 ER Cards</button>
     </div>
 
     <div class="btn-group">
       <button id="vEdges" class="btn active">🔗 Edges: On</button>
-      <button id="vLabels" class="btn">🏷 Labels: Front</button>
+      <button id="vLabels" class="btn">🏷 Labels: Smart</button>
       <button id="vSpin" class="btn active" title="Toggle gentle auto-rotation">⟳ Spin</button>
-      <button id="openSqlBtn" class="btn primary-sql" title="Parse custom SQL DDL live">＋ Paste SQL</button>
+      <button id="openSqlBtn" class="btn primary-sql" title="Paste SQL or test 8,000-table stress mode">＋ SQL / 8K Test</button>
     </div>
   </header>
 
@@ -1500,73 +1452,61 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div id="legend"></div>
 
   <!-- =====================================================================
-       MAIN WORKSPACE: SIDEBAR + PERMANENT 3D STAGE + INSPECTOR DRAWER
+       MAIN WORKSPACE
        ===================================================================== -->
   <div id="main">
-    <!-- Left Collapsible Sidebar -->
+    <!-- Left Collapsible Sidebar (Lazy DOM) -->
     <aside id="side">
       <div id="side-tools">
         <span class="cnt" id="side-cnt">0 dbs</span>
-        <button id="foldBtn">Close All</button>
+        <button id="foldBtn">Open All</button>
       </div>
       <div id="side-list"></div>
     </aside>
 
-    <!-- Main Content Stage -->
+    <!-- Central Stage -->
     <main id="content">
-      <!-- Permanent 3D SVG Canvas Wrapper (Always visible in 3D Network mode!) -->
+      <!-- High-Speed 60FPS HTML5 Canvas Stage -->
       <section id="graph-wrap">
-        <svg id="graph" aria-label="3D Database Schema Network">
-          <defs>
-            <!-- Directional Arrowheads -->
-            <marker id="fkA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-              <path d="M0,0.8 L7.5,4 L0,7.2 z" fill="#fdba74"></path>
-            </marker>
-            <marker id="fkR" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
-              <path d="M7.5,0.8 L0,4 L7.5,7.2 z" fill="#fdba74"></path>
-            </marker>
-            <marker id="fkACross" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-              <path d="M0,0.8 L7.5,4 L0,7.2 z" fill="#fbbf24"></path>
-            </marker>
-            <marker id="fkRCross" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
-              <path d="M7.5,0.8 L0,4 L7.5,7.2 z" fill="#fbbf24"></path>
-            </marker>
-            <marker id="fkSelf" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-              <path d="M0,0.6 L6.8,3.5 L0,6.4 z" fill="#22d3ee"></path>
-            </marker>
-          </defs>
-          <g id="layer-bg"></g>
-          <g id="layer-edges"></g>
-          <g id="layer-nodes"></g>
-          <g id="layer-elabels"></g>
-        </svg>
+        <canvas id="graphCanvas" aria-label="3D Database Schema Canvas"></canvas>
 
-        <!-- Focus Mode HUD Pill -->
-        <div id="focus-hud">
-          <span class="fdot"></span>
-          <span class="ftxt" id="focus-hud-txt">Focused</span>
-          <button id="exitFocusBtn">← Full 3D Planet (Esc)</button>
+        <!-- Dynamic Stage HUD (Galaxy / Solo DB / Focus Mode) -->
+        <div id="stage-hud" style="display:none">
+          <span class="fdot" id="hud-dot"></span>
+          <span class="ftxt" id="hud-txt"></span>
+          <button id="hud-btn"></button>
         </div>
+
+        <!-- Lightweight Hover Tooltip -->
+        <div id="hover-tip"></div>
 
         <!-- Floating Canvas Controls -->
         <div id="ctl">
           <button id="zIn" title="Zoom in (+)">+</button>
           <button id="zOut" title="Zoom out (−)">−</button>
-          <button id="zFit" title="Center &amp; fit view">⤢</button>
+          <button id="zFit" title="Fit view">⤢</button>
           <button id="hand" title="Toggle Rotate / Pan tool">🔄</button>
-          <button id="zReset" title="Reset to 3D Sphere (Esc)">⊙</button>
+          <button id="zReset" title="Reset view (Esc)">⊙</button>
         </div>
 
-        <!-- Subtle Controls Hint -->
-        <div id="canvas-hint">
-          Drag = Rotate · Shift+Drag / ✋ = Pan · Scroll = Zoom · Click Node = Sunflower Focus · Dbl-Click / Esc = Reset
+        <!-- Subtle Footer Hint & Engine Telemetry -->
+        <div id="canvas-footer">
+          <div class="footer-pill" id="canvas-hint-pill">
+            Drag = Rotate · Shift+Drag / ✋ = Pan · Scroll = Zoom · Click = Inspect / Drill-In · Esc = Reset
+          </div>
+          <div class="footer-pill" id="perf-pill">
+            Canvas 2D · <b>60 fps</b>
+          </div>
         </div>
       </section>
 
-      <!-- ER Cards Grid View -->
-      <section id="cards"></section>
+      <!-- Paginated ER Cards View (Zero DOM cost until opened) -->
+      <section id="cards-wrap">
+        <div id="cards"></div>
+        <div id="cards-pager"></div>
+      </section>
 
-      <!-- Sleek Slide-In Table Inspector Drawer (Alongside Graph) -->
+      <!-- Sleek Slide-In Table Inspector Drawer -->
       <aside id="detail" aria-label="Table Inspector">
         <div class="detail-header">
           <div class="detail-title-row">
@@ -1574,7 +1514,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               <h2 id="tname">table_name</h2>
               <div id="tsrcc" class="srchip"><span class="sdot"></span><span id="tsrcc-txt"></span></div>
             </div>
-            <button id="closeDetail" title="Close inspector &amp; reset (Esc)">×</button>
+            <button id="closeDetail" title="Close inspector &amp; exit focus (Esc)">×</button>
           </div>
           <div class="detail-stats" id="tstats"></div>
         </div>
@@ -1604,23 +1544,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <!-- =====================================================================
-       PASTE SQL DDL MODAL
+       PASTE SQL & 8,000-TABLE STRESS BENCHMARK MODAL
        ===================================================================== -->
   <div id="sqlModal" role="dialog" aria-modal="true" aria-labelledby="sqlModalTitle">
     <div class="modal-box">
       <div class="modal-head">
-        <h3 id="sqlModalTitle">⚡ Live SQL DDL Parser</h3>
+        <h3 id="sqlModalTitle">⚡ Live SQL DDL Parser &amp; High-Scale Benchmark</h3>
         <button id="closeSqlBtn" class="btn">×</button>
       </div>
       <div class="modal-body">
         <div class="modal-row">
           <label for="sqlSourceName">Source Label:</label>
           <input id="sqlSourceName" class="modal-input" type="text" value="custom_schema.sql" placeholder="e.g. billing.sql">
-          <button id="loadSampleSqlBtn" class="btn">Insert Sample SQL</button>
-          <button id="restoreDefaultBtn" class="btn">Restore 4-DB Demo</button>
+          <button id="loadSampleSqlBtn" class="btn">Sample SQL</button>
+          <button id="bench8kBtn" class="btn galaxy-active" title="Simulate 67 DBs, ~8,300 tables &amp; ~22,000 relations">🚀 Simulate 8,300 Tables (67 DBs)</button>
+          <button id="restoreDefaultBtn" class="btn">4-DB Demo</button>
         </div>
         <textarea id="sqlInput" class="modal-textarea" placeholder="-- Paste CREATE TABLE statements here...
--- Supports -- comments, /* block comments */, inline REFERENCES, and FOREIGN KEY (...) REFERENCES ...
+-- Supports -- comments, block comments, inline REFERENCES, and FOREIGN KEY (...) REFERENCES ...
 
 CREATE TABLE projects (
   id SERIAL PRIMARY KEY,
@@ -1632,10 +1573,10 @@ CREATE TABLE projects (
       </div>
       <div class="modal-foot">
         <span style="font-size: 11.5px; color: var(--text-dim);">
-          Parses <code>CREATE TABLE</code>, inline <code>REFERENCES</code> &amp; <code>FOREIGN KEY</code>
+          Engine automatically switches to <b>DB Galaxy</b> for huge multi-DB schemas (&gt;600 tables).
         </span>
         <div class="btn-group">
-          <button id="sqlAddBtn" class="btn active">＋ Add to Current Schema</button>
+          <button id="sqlAddBtn" class="btn active">＋ Add to Current</button>
           <button id="sqlReplaceBtn" class="btn primary-sql">↻ Replace Schema</button>
         </div>
       </div>
@@ -1646,302 +1587,141 @@ CREATE TABLE projects (
   <div id="toast"></div>
 
   <!-- =====================================================================
-       APPLICATION SCRIPT (ZERO DEPENDENCIES)
+       HIGH-SCALE 3D CANVAS ENGINE (ZERO DEPENDENCIES)
        ===================================================================== -->
   <script>
   (function () {
     'use strict';
 
     /* =====================================================================
-       1. REALISTIC PRELOADED 22-TABLE MULTI-DATABASE DATASET
-       Covers intra-DB FKs, cross-DB FKs, multi-FK pairs, and self-refs
+       1. DATA INJECTION HOOK & DEFAULT DEMO DATASET
+       ctxp schema --html swaps the placeholder below for the project's real schema
        ===================================================================== */
-    /* Injected by `ctxp schema --html`: the project's real extracted schema
-       (tables, columns, foreign keys). Falls back to the built-in demo
-       dataset when the project had no schema to show. */
-    const INITIAL_DATA = __DATA__;
+    const INJECTED_DATA = __DATA__;
 
     const DEFAULT_DATA = [
-      // --- 1. core_auth.sql (5 tables) ---
-      {
-        name: 'tenants',
-        source: 'core_auth.sql',
-        columns: ['id', 'slug', 'name', 'plan_tier', 'is_active', 'created_at'],
-        fks: []
-      },
-      {
-        name: 'users',
-        source: 'core_auth.sql',
-        columns: ['id', 'tenant_id', 'manager_id', 'email', 'full_name', 'status', 'last_login_at'],
-        fks: [
-          { column: 'tenant_id', ref_table: 'tenants' },
-          { column: 'manager_id', ref_table: 'users' }
-        ]
-      },
-      {
-        name: 'roles',
-        source: 'core_auth.sql',
-        columns: ['id', 'code', 'title', 'permissions_json'],
-        fks: []
-      },
-      {
-        name: 'user_roles',
-        source: 'core_auth.sql',
-        columns: ['id', 'user_id', 'role_id', 'assigned_at'],
-        fks: [
-          { column: 'user_id', ref_table: 'users' },
-          { column: 'role_id', ref_table: 'roles' }
-        ]
-      },
-      {
-        name: 'audit_logs',
-        source: 'core_auth.sql',
-        columns: ['id', 'tenant_id', 'actor_id', 'action', 'entity_type', 'entity_id', 'created_at'],
-        fks: [
-          { column: 'actor_id', ref_table: 'users' },
-          { column: 'tenant_id', ref_table: 'tenants' }
-        ]
-      },
+      // --- 1. core_auth.sql ---
+      { name: 'tenants', source: 'core_auth.sql', columns: ['id', 'slug', 'name', 'plan_tier', 'is_active', 'created_at'], fks: [] },
+      { name: 'users', source: 'core_auth.sql', columns: ['id', 'tenant_id', 'manager_id', 'email', 'full_name', 'status', 'last_login_at'], fks: [{ column: 'tenant_id', ref_table: 'tenants' }, { column: 'manager_id', ref_table: 'users' }] },
+      { name: 'roles', source: 'core_auth.sql', columns: ['id', 'code', 'title', 'permissions_json'], fks: [] },
+      { name: 'user_roles', source: 'core_auth.sql', columns: ['id', 'user_id', 'role_id', 'assigned_at'], fks: [{ column: 'user_id', ref_table: 'users' }, { column: 'role_id', ref_table: 'roles' }] },
+      { name: 'audit_logs', source: 'core_auth.sql', columns: ['id', 'tenant_id', 'actor_id', 'action', 'entity_type', 'entity_id', 'created_at'], fks: [{ column: 'actor_id', ref_table: 'users' }, { column: 'tenant_id', ref_table: 'tenants' }] },
 
-      // --- 2. accounting_ledger.sql (6 tables) ---
-      {
-        name: 'accounts',
-        source: 'accounting_ledger.sql',
-        columns: ['id', 'tenant_id', 'parent_id', 'code', 'name', 'account_type', 'currency'],
-        fks: [
-          { column: 'parent_id', ref_table: 'accounts' },
-          { column: 'tenant_id', ref_table: 'tenants' }
-        ]
-      },
-      {
-        name: 'fiscal_years',
-        source: 'accounting_ledger.sql',
-        columns: ['id', 'tenant_id', 'label', 'start_date', 'end_date', 'is_closed'],
-        fks: [
-          { column: 'tenant_id', ref_table: 'tenants' }
-        ]
-      },
-      {
-        name: 'cost_centers',
-        source: 'accounting_ledger.sql',
-        columns: ['id', 'parent_id', 'code', 'name', 'department'],
-        fks: [
-          { column: 'parent_id', ref_table: 'cost_centers' }
-        ]
-      },
-      {
-        name: 'journal_entries',
-        source: 'accounting_ledger.sql',
-        columns: ['id', 'fiscal_year_id', 'entry_no', 'entry_date', 'memo', 'created_by', 'approved_by', 'posted_at'],
-        fks: [
-          { column: 'fiscal_year_id', ref_table: 'fiscal_years' },
-          { column: 'created_by', ref_table: 'users' },
-          { column: 'approved_by', ref_table: 'users' }
-        ]
-      },
-      {
-        name: 'journal_lines',
-        source: 'accounting_ledger.sql',
-        columns: ['id', 'entry_id', 'account_id', 'cost_center_id', 'debit', 'credit', 'description'],
-        fks: [
-          { column: 'entry_id', ref_table: 'journal_entries' },
-          { column: 'account_id', ref_table: 'accounts' },
-          { column: 'cost_center_id', ref_table: 'cost_centers' }
-        ]
-      },
-      {
-        name: 'budgets',
-        source: 'accounting_ledger.sql',
-        columns: ['id', 'fiscal_year_id', 'account_id', 'cost_center_id', 'allocated_amount', 'revised_amount'],
-        fks: [
-          { column: 'cost_center_id', ref_table: 'cost_centers' },
-          { column: 'account_id', ref_table: 'accounts' },
-          { column: 'fiscal_year_id', ref_table: 'fiscal_years' }
-        ]
-      },
+      // --- 2. accounting_ledger.sql ---
+      { name: 'accounts', source: 'accounting_ledger.sql', columns: ['id', 'tenant_id', 'parent_id', 'code', 'name', 'account_type', 'currency'], fks: [{ column: 'parent_id', ref_table: 'accounts' }, { column: 'tenant_id', ref_table: 'tenants' }] },
+      { name: 'fiscal_years', source: 'accounting_ledger.sql', columns: ['id', 'tenant_id', 'label', 'start_date', 'end_date', 'is_closed'], fks: [{ column: 'tenant_id', ref_table: 'tenants' }] },
+      { name: 'cost_centers', source: 'accounting_ledger.sql', columns: ['id', 'parent_id', 'code', 'name', 'department'], fks: [{ column: 'parent_id', ref_table: 'cost_centers' }] },
+      { name: 'journal_entries', source: 'accounting_ledger.sql', columns: ['id', 'fiscal_year_id', 'entry_no', 'entry_date', 'memo', 'created_by', 'approved_by', 'posted_at'], fks: [{ column: 'fiscal_year_id', ref_table: 'fiscal_years' }, { column: 'created_by', ref_table: 'users' }, { column: 'approved_by', ref_table: 'users' }] },
+      { name: 'journal_lines', source: 'accounting_ledger.sql', columns: ['id', 'entry_id', 'account_id', 'cost_center_id', 'debit', 'credit', 'description'], fks: [{ column: 'entry_id', ref_table: 'journal_entries' }, { column: 'account_id', ref_table: 'accounts' }, { column: 'cost_center_id', ref_table: 'cost_centers' }] },
+      { name: 'budgets', source: 'accounting_ledger.sql', columns: ['id', 'fiscal_year_id', 'account_id', 'cost_center_id', 'allocated_amount', 'revised_amount'], fks: [{ column: 'cost_center_id', ref_table: 'cost_centers' }, { column: 'account_id', ref_table: 'accounts' }, { column: 'fiscal_year_id', ref_table: 'fiscal_years' }] },
 
-      // --- 3. sales_pos.sql (5 tables) ---
-      {
-        name: 'customers',
-        source: 'sales_pos.sql',
-        columns: ['id', 'tenant_id', 'receivable_account_id', 'name', 'tax_id', 'phone', 'credit_limit'],
-        fks: [
-          { column: 'tenant_id', ref_table: 'tenants' },
-          { column: 'receivable_account_id', ref_table: 'accounts' }
-        ]
-      },
-      {
-        name: 'pos_terminals',
-        source: 'sales_pos.sql',
-        columns: ['id', 'branch_id', 'terminal_code', 'register_name', 'is_online'],
-        fks: [
-          { column: 'branch_id', ref_table: 'warehouses' }
-        ]
-      },
-      {
-        name: 'invoices',
-        source: 'sales_pos.sql',
-        columns: ['id', 'invoice_no', 'customer_id', 'terminal_id', 'journal_entry_id', 'cashier_id', 'total_amount', 'issued_at'],
-        fks: [
-          { column: 'customer_id', ref_table: 'customers' },
-          { column: 'terminal_id', ref_table: 'pos_terminals' },
-          { column: 'journal_entry_id', ref_table: 'journal_entries' },
-          { column: 'cashier_id', ref_table: 'users' }
-        ]
-      },
-      {
-        name: 'invoice_items',
-        source: 'sales_pos.sql',
-        columns: ['id', 'invoice_id', 'product_id', 'qty', 'unit_price', 'discount', 'line_total'],
-        fks: [
-          { column: 'invoice_id', ref_table: 'invoices' },
-          { column: 'product_id', ref_table: 'products' }
-        ]
-      },
-      {
-        name: 'payments',
-        source: 'sales_pos.sql',
-        columns: ['id', 'invoice_id', 'account_id', 'method', 'amount', 'paid_at'],
-        fks: [
-          { column: 'invoice_id', ref_table: 'invoices' },
-          { column: 'account_id', ref_table: 'accounts' }
-        ]
-      },
+      // --- 3. sales_pos.sql ---
+      { name: 'customers', source: 'sales_pos.sql', columns: ['id', 'tenant_id', 'receivable_account_id', 'name', 'tax_id', 'phone', 'credit_limit'], fks: [{ column: 'tenant_id', ref_table: 'tenants' }, { column: 'receivable_account_id', ref_table: 'accounts' }] },
+      { name: 'pos_terminals', source: 'sales_pos.sql', columns: ['id', 'branch_id', 'terminal_code', 'register_name', 'is_online'], fks: [{ column: 'branch_id', ref_table: 'warehouses' }] },
+      { name: 'invoices', source: 'sales_pos.sql', columns: ['id', 'invoice_no', 'customer_id', 'terminal_id', 'journal_entry_id', 'cashier_id', 'total_amount', 'issued_at'], fks: [{ column: 'customer_id', ref_table: 'customers' }, { column: 'terminal_id', ref_table: 'pos_terminals' }, { column: 'journal_entry_id', ref_table: 'journal_entries' }, { column: 'cashier_id', ref_table: 'users' }] },
+      { name: 'invoice_items', source: 'sales_pos.sql', columns: ['id', 'invoice_id', 'product_id', 'qty', 'unit_price', 'discount', 'line_total'], fks: [{ column: 'invoice_id', ref_table: 'invoices' }, { column: 'product_id', ref_table: 'products' }] },
+      { name: 'payments', source: 'sales_pos.sql', columns: ['id', 'invoice_id', 'account_id', 'method', 'amount', 'paid_at'], fks: [{ column: 'invoice_id', ref_table: 'invoices' }, { column: 'account_id', ref_table: 'accounts' }] },
 
-      // --- 4. inventory.sqlite3 (6 tables) ---
-      {
-        name: 'warehouses',
-        source: 'inventory.sqlite3',
-        columns: ['id', 'code', 'name', 'city', 'manager_id', 'capacity_sqm'],
-        fks: [
-          { column: 'manager_id', ref_table: 'users' }
-        ]
-      },
-      {
-        name: 'categories',
-        source: 'inventory.sqlite3',
-        columns: ['id', 'parent_id', 'name', 'slug'],
-        fks: [
-          { column: 'parent_id', ref_table: 'categories' }
-        ]
-      },
-      {
-        name: 'products',
-        source: 'inventory.sqlite3',
-        columns: ['id', 'sku', 'name', 'category_id', 'expense_account_id', 'unit_cost', 'sale_price'],
-        fks: [
-          { column: 'category_id', ref_table: 'categories' },
-          { column: 'expense_account_id', ref_table: 'accounts' }
-        ]
-      },
-      {
-        name: 'stock_levels',
-        source: 'inventory.sqlite3',
-        columns: ['id', 'warehouse_id', 'product_id', 'qty_on_hand', 'reorder_point', 'updated_at'],
-        fks: [
-          { column: 'warehouse_id', ref_table: 'warehouses' },
-          { column: 'product_id', ref_table: 'products' }
-        ]
-      },
-      {
-        name: 'stock_moves',
-        source: 'inventory.sqlite3',
-        columns: ['id', 'product_id', 'from_warehouse_id', 'to_warehouse_id', 'created_by', 'quantity', 'moved_at'],
-        fks: [
-          { column: 'product_id', ref_table: 'products' },
-          { column: 'from_warehouse_id', ref_table: 'warehouses' },
-          { column: 'to_warehouse_id', ref_table: 'warehouses' },
-          { column: 'created_by', ref_table: 'users' }
-        ]
-      },
-      {
-        name: 'suppliers',
-        source: 'inventory.sqlite3',
-        columns: ['id', 'name', 'contact_email', 'payable_account_id', 'lead_time_days'],
-        fks: [
-          { column: 'payable_account_id', ref_table: 'accounts' }
-        ]
-      }
+      // --- 4. inventory.sqlite3 ---
+      { name: 'warehouses', source: 'inventory.sqlite3', columns: ['id', 'code', 'name', 'city', 'manager_id', 'capacity_sqm'], fks: [{ column: 'manager_id', ref_table: 'users' }] },
+      { name: 'categories', source: 'inventory.sqlite3', columns: ['id', 'parent_id', 'name', 'slug'], fks: [{ column: 'parent_id', ref_table: 'categories' }] },
+      { name: 'products', source: 'inventory.sqlite3', columns: ['id', 'sku', 'name', 'category_id', 'expense_account_id', 'unit_cost', 'sale_price'], fks: [{ column: 'category_id', ref_table: 'categories' }, { column: 'expense_account_id', ref_table: 'accounts' }] },
+      { name: 'stock_levels', source: 'inventory.sqlite3', columns: ['id', 'warehouse_id', 'product_id', 'qty_on_hand', 'reorder_point', 'updated_at'], fks: [{ column: 'warehouse_id', ref_table: 'warehouses' }, { column: 'product_id', ref_table: 'products' }] },
+      { name: 'stock_moves', source: 'inventory.sqlite3', columns: ['id', 'product_id', 'from_warehouse_id', 'to_warehouse_id', 'created_by', 'quantity', 'moved_at'], fks: [{ column: 'product_id', ref_table: 'products' }, { column: 'from_warehouse_id', ref_table: 'warehouses' }, { column: 'to_warehouse_id', ref_table: 'warehouses' }, { column: 'created_by', ref_table: 'users' }] },
+      { name: 'suppliers', source: 'inventory.sqlite3', columns: ['id', 'name', 'contact_email', 'payable_account_id', 'lead_time_days'], fks: [{ column: 'payable_account_id', ref_table: 'accounts' }] }
     ];
 
     /* =====================================================================
-       2. GLOBAL STATE & PALETTE
+       2. STATE, CONSTANTS & PALETTE
        ===================================================================== */
     const PALETTE = [
-      '#3b82f6', // Royal Blue
-      '#22c55e', // Emerald
-      '#a855f7', // Violet
-      '#06b6d4', // Cyan
-      '#f97316', // Orange
-      '#ec4899', // Pink
-      '#eab308', // Yellow
-      '#14b8a6'  // Teal
+      '#3b82f6', '#22c55e', '#a855f7', '#06b6d4',
+      '#f97316', '#ec4899', '#eab308', '#14b8a6',
+      '#6366f1', '#10b981', '#f43f5e', '#0ea5e9'
     ];
 
-    const FRONT_Z = 0.22;
-    const SPHERE_RADIUS = 285;
-    const NS = 'http://www.w3.org/2000/svg';
+    const SPHERE_RADIUS = 275;
+    const HUGE_TABLE_THRESHOLD = 550;
+    const CARDS_PAGE_SIZE = 60;
+    const SIDE_CHUNK_SIZE = 80;
 
-    let data = (INITIAL_DATA && INITIAL_DATA.length) ? cloneData(INITIAL_DATA) : cloneData(DEFAULT_DATA);
+    let data = Array.isArray(INJECTED_DATA) && INJECTED_DATA.length
+      ? cloneData(INJECTED_DATA)
+      : cloneData(DEFAULT_DATA);
+
     let sources = [];
     let sColor = {};
+    let sourceTableMap = {}; // source -> array of tables
+
+    // Table-level graph structures
     let nodes = [];
     let byKey = {};
     let byKeyLower = {};
     let byNameLower = {};
     let links = [];
     let pairs = [];
+    let incomingByKey = {};
     let hasCross = false;
 
-    // Interactive View State
-    let mode = 'graph'; // 'graph' | 'cards'
-    let selectedKey = null;
-    let soloSource = null;
+    // Database Galaxy structures (1 orb per database source)
+    let galaxyNodes = [];
+    let galaxyLinks = [];
+    let galaxyBySource = {};
+
+    // View & Interaction State
+    let mode = 'graph';          // 'galaxy' | 'graph' | 'cards'
+    let selectedKey = null;      // Focused table key in 'graph' mode
+    let hoveredItem = null;      // Hovered table node or galaxy node
+    let soloSource = null;       // Soloed DB source
     let disabledSources = new Set();
-    let showAllLabels = false;
+    let labelMode = 'smart';     // 'smart' | 'all' | 'off'
     let showEdges = true;
     let autoSpin = true;
-    let tool = 'rotate'; // 'rotate' | 'pan'
+    let tool = 'rotate';         // 'rotate' | 'pan'
     let searchQuery = '';
 
-    // keys that participate in the current focus view (hub + neighbors)
-    let focusSet = new Set();
-
-    // Camera & Smooth Animation State
-    let rot = { rx: -0.28, ry: 0.55 };
+    // Camera & Smooth Transition State
+    let rot = { rx: -0.26, ry: 0.52 };
     let zoom = 1;
     let pan = { x: 0, y: 0 };
-
-    // Transition animation envelope (~420ms cubic ease-out)
     let anim = null;
+    let needsRender = true;
     let lastFrameTime = performance.now();
 
-    // DOM References
-    const svg = document.getElementById('graph');
-    const layerBg = document.getElementById('layer-bg');
-    const layerEdges = document.getElementById('layer-edges');
-    const layerNodes = document.getElementById('layer-nodes');
-    const layerElabels = document.getElementById('layer-elabels');
+    // Canvas & Telemetry
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    let cw = 800, ch = 520, dpr = 1;
+    let stars = [];
+    let lastProjectedItems = []; // For fast O(N) screen-space hit-testing
+    let fpsFrames = 0, fpsLastTime = performance.now(), currentFps = 60;
 
+    // DOM References
     const sideEl = document.getElementById('side');
     const sideListEl = document.getElementById('side-list');
     const sideCntEl = document.getElementById('side-cnt');
     const foldBtn = document.getElementById('foldBtn');
     const detailEl = document.getElementById('detail');
+    const cardsWrapEl = document.getElementById('cards-wrap');
     const cardsEl = document.getElementById('cards');
+    const cardsPagerEl = document.getElementById('cards-pager');
     const graphWrapEl = document.getElementById('graph-wrap');
-    const focusHudEl = document.getElementById('focus-hud');
-    const focusHudTxt = document.getElementById('focus-hud-txt');
+    const stageHudEl = document.getElementById('stage-hud');
+    const hudDot = document.getElementById('hud-dot');
+    const hudTxt = document.getElementById('hud-txt');
+    const hudBtn = document.getElementById('hud-btn');
+    const hoverTipEl = document.getElementById('hover-tip');
+    const perfPillEl = document.getElementById('perf-pill');
     const searchInput = document.getElementById('q');
     const searchClear = document.getElementById('qClear');
 
-    let sideItem = {};
-    let bgStars = [];
+    let cardsRenderedCount = 0;
+    let cardsFilteredList = [];
     let toastTimer = null;
-    let lastZOrderSig = '';
+    let searchDebounceTimer = null;
 
     /* =====================================================================
-       3. UTILITY HELPERS
+       3. HELPERS
        ===================================================================== */
     function cloneData(arr) {
       return arr.map(t => ({
@@ -1967,14 +1747,6 @@ CREATE TABLE projects (
       return t.source + '|' + t.name;
     }
 
-    function svgEl(tag, attrs) {
-      const e = document.createElementNS(NS, tag);
-      if (attrs) {
-        for (const k in attrs) e.setAttribute(k, attrs[k]);
-      }
-      return e;
-    }
-
     function toast(msg) {
       const t = document.getElementById('toast');
       t.textContent = msg;
@@ -1983,7 +1755,7 @@ CREATE TABLE projects (
       toastTimer = setTimeout(() => {
         t.classList.remove('show');
         toastTimer = null;
-      }, 2100);
+      }, 2300);
     }
 
     function easeOutCubic(t) {
@@ -1992,53 +1764,83 @@ CREATE TABLE projects (
 
     function matchTable(t, q) {
       if (!q) return true;
-      if (t.name.toLowerCase().indexOf(q) >= 0) return true;
-      if (t.source.toLowerCase().indexOf(q) >= 0) return true;
-      return t.columns.some(c => c.toLowerCase().indexOf(q) >= 0);
+      if (t._nameLower.indexOf(q) >= 0) return true;
+      if (t._srcLower.indexOf(q) >= 0) return true;
+      return t._colsLower.indexOf(q) >= 0;
     }
 
     function isSourceVisible(src) {
       return !disabledSources.has(src);
     }
 
+    function initStars() {
+      stars = [];
+      let seed = 1337;
+      const rand = () => {
+        seed = (seed * 16807) % 2147483647;
+        return (seed - 1) / 2147483646;
+      };
+      for (let i = 0; i < 80; i++) {
+        stars.push({
+          nx: rand(),
+          ny: rand(),
+          r: 0.6 + rand() * 1.35,
+          a: 0.08 + rand() * 0.28
+        });
+      }
+    }
+
     /* =====================================================================
-       4. GRAPH DATA MODEL & REUSABLE SVG SCENE CONSTRUCTION
-       Builds DOM elements once per dataset load for silky-smooth 60fps
+       4. DATASET INDEXING (TABLE GRAPH + DATABASE GALAXY)
+       Runs in < 40ms even for 10,000+ tables and 25,000+ relations
        ===================================================================== */
-    function rebuildDataset() {
+    function rebuildDataset(autoSelectMode) {
       sources = [];
+      sourceTableMap = {};
       data.forEach(t => {
-        if (sources.indexOf(t.source) < 0) sources.push(t.source);
+        if (!sourceTableMap[t.source]) {
+          sources.push(t.source);
+          sourceTableMap[t.source] = [];
+        }
+        sourceTableMap[t.source].push(t);
       });
+
+      // Sort sources by table count descending so major DBs appear first
+      sources.sort((a, b) => sourceTableMap[b].length - sourceTableMap[a].length);
 
       sColor = {};
       sources.forEach((s, i) => {
         sColor[s] = PALETTE[i % PALETTE.length];
       });
 
-      // Huge corpora (thousands of tables): continuous auto-spin is
-      // expensive per frame, so start paused; the Spin button re-enables it.
-      autoSpin = data.length <= 1500;
-      const spinBtn = document.getElementById('vSpin');
-      spinBtn.classList.toggle('active', autoSpin);
-      spinBtn.classList.toggle('off', !autoSpin);
-      spinBtn.title = autoSpin ? 'Toggle gentle auto-rotation'
-        : 'Auto-rotation paused for a large schema (' + data.length + ' tables); click to enable';
-
-      // Distribute tables cleanly across a Fibonacci Sphere
+      // Build Fibonacci Sphere coordinates for all tables
       const N = Math.max(1, data.length);
-      nodes = data.map((t, i) => {
+      nodes = new Array(data.length);
+      byKey = {};
+      byKeyLower = {};
+      byNameLower = {};
+      incomingByKey = {};
+
+      for (let i = 0; i < data.length; i++) {
+        const t = data[i];
         const phi = Math.acos(1 - 2 * (i + 0.5) / N);
         const th = Math.PI * (1 + Math.sqrt(5)) * i;
         const sx = Math.sin(phi) * Math.cos(th);
         const sy = Math.cos(phi);
         const sz = Math.sin(phi) * Math.sin(th);
-        return {
+        const k = keyOf(t);
+
+        const node = {
+          kind: 'table',
           name: t.name,
           source: t.source,
           columns: t.columns,
           fks: t.fks,
-          key: keyOf(t),
+          key: k,
+          color: sColor[t.source] || '#3b82f6',
+          _nameLower: t.name.toLowerCase(),
+          _srcLower: t.source.toLowerCase(),
+          _colsLower: (t.columns || []).join('\u0001').toLowerCase(),
           sph: { x: sx, y: sy, z: sz },
           cur: { x: sx, y: sy, z: sz },
           start: { x: sx, y: sy, z: sz },
@@ -2046,187 +1848,161 @@ CREATE TABLE projects (
           alpha: 1,
           startAlpha: 1,
           tgtAlpha: 1,
-          hovered: false,
-          el: null,
-          haloEl: null,
-          coreEl: null,
-          shineEl: null,
-          labelEl: null
+          deg: 0
         };
-      });
+        nodes[i] = node;
+        byKey[k] = node;
+        byKeyLower[(t.source + '|' + t.name).toLowerCase()] = node;
+        if (!(node._nameLower in byNameLower)) byNameLower[node._nameLower] = node;
+        incomingByKey[k] = [];
+      }
 
-      // Case-insensitive lookup indices
-      byKey = {};
-      byKeyLower = {};
-      byNameLower = {};
-      nodes.forEach(n => {
-        byKey[n.key] = n;
-        byKeyLower[(n.source + '|' + n.name).toLowerCase()] = n;
-        const ln = n.name.toLowerCase();
-        if (!(ln in byNameLower)) byNameLower[ln] = n;
-      });
-
-      // Resolve all Foreign Keys (same-DB first, then cross-DB)
+      // Resolve Foreign Keys (same-DB first, then cross-DB)
       links = [];
-      nodes.forEach(n => {
-        n.fks.forEach(fk => {
-          const to = byKeyLower[(n.source + '|' + fk.ref_table).toLowerCase()]
-            || byNameLower[fk.ref_table.toLowerCase()];
-          if (to) {
-            links.push({
-              s: n,
-              t: to,
-              fk: fk,
-              cross: n.source !== to.source,
-              self: n.key === to.key
-            });
+      const pairMap = {};
+      pairs = [];
+      const galaxyEdgeMap = {};
+      const intraFkBySource = {};
+
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        const fks = n.fks || [];
+        for (let j = 0; j < fks.length; j++) {
+          const fk = fks[j];
+          const refLower = fk.ref_table.toLowerCase();
+          const to = byKeyLower[(n.source + '|' + fk.ref_table).toLowerCase()] || byNameLower[refLower];
+          if (!to) continue;
+
+          const cross = n.source !== to.source;
+          const self = n.key === to.key;
+          const linkObj = { s: n, t: to, fk: fk, cross: cross, self: self };
+          links.push(linkObj);
+          incomingByKey[to.key].push(linkObj);
+          n.deg++;
+          to.deg++;
+
+          // Aggregate pair edge
+          const pk = n.key < to.key ? (n.key + '||' + to.key) : (to.key + '||' + n.key);
+          let pr = pairMap[pk];
+          if (!pr) {
+            pr = {
+              s: n.key <= to.key ? n : to,
+              t: n.key <= to.key ? to : n,
+              out: [],
+              inn: [],
+              cross: cross,
+              self: self
+            };
+            pairMap[pk] = pr;
+            pairs.push(pr);
           }
-        });
-      });
+          if (cross) pr.cross = true;
+          if (n.key === pr.s.key) {
+            if (pr.out.indexOf(fk.column) < 0) pr.out.push(fk.column);
+          } else {
+            if (pr.inn.indexOf(fk.column) < 0) pr.inn.push(fk.column);
+          }
+
+          // Aggregate DB-to-DB links for Galaxy View
+          if (cross) {
+            const gk = n.source < to.source ? (n.source + '||' + to.source) : (to.source + '||' + n.source);
+            if (!galaxyEdgeMap[gk]) {
+              galaxyEdgeMap[gk] = { sSrc: n.source < to.source ? n.source : to.source, tSrc: n.source < to.source ? to.source : n.source, count: 0 };
+            }
+            galaxyEdgeMap[gk].count++;
+          } else {
+            intraFkBySource[n.source] = (intraFkBySource[n.source] || 0) + 1;
+          }
+        }
+      }
 
       hasCross = links.some(l => l.cross);
 
-      // Deduplicate edges per pair of tables (combining multi-FK labels)
-      const pairMap = {};
-      pairs = [];
-      links.forEach(l => {
-        const k = l.s.key < l.t.key ? (l.s.key + '||' + l.t.key) : (l.t.key + '||' + l.s.key);
-        let pr = pairMap[k];
-        if (!pr) {
-          pr = {
-            id: k,
-            s: l.s.key <= l.t.key ? l.s : l.t,
-            t: l.s.key <= l.t.key ? l.t : l.s,
-            out: [], // FKs from pr.s -> pr.t
-            inn: [], // FKs from pr.t -> pr.s
-            cross: false,
-            self: l.self,
-            el: null,
-            labelOutEl: null,
-            labelInnEl: null
-          };
-          pairMap[k] = pr;
-          pairs.push(pr);
-        }
-        if (l.cross) pr.cross = true;
-        if (l.s.key === pr.s.key) {
-          if (pr.out.indexOf(l.fk.column) < 0) pr.out.push(l.fk.column);
-        } else {
-          if (pr.inn.indexOf(l.fk.column) < 0) pr.inn.push(l.fk.column);
-        }
-      });
-
-      buildSvgScene();
-      buildLegend();
-      buildSide(searchQuery);
-      buildCards(searchQuery);
-      updateViewBox();
-      renderFrame();
-    }
-
-    function buildSvgScene() {
-      // Clear layers once when schema changes
-      layerBg.innerHTML = '';
-      layerEdges.innerHTML = '';
-      layerNodes.innerHTML = '';
-      layerElabels.innerHTML = '';
-      lastZOrderSig = '';
-
-      // 1. Subtle cosmic backdrop: orbital rings + gentle starfield
-      [210, 315, 430].forEach((r, idx) => {
-        const ring = svgEl('circle', {
-          cx: 0, cy: 0, r: r,
-          class: 'bg-ring',
-          'stroke-opacity': idx === 1 ? '0.13' : '0.06'
-        });
-        layerBg.appendChild(ring);
-      });
-
-      bgStars = [];
-      // Deterministic pseudo-random starfield for crisp ambiance
-      let seed = 42;
-      const rand = () => {
-        seed = (seed * 16807) % 2147483647;
-        return (seed - 1) / 2147483646;
-      };
-      for (let i = 0; i < 65; i++) {
-        const x = (rand() - 0.5) * 1400;
-        const y = (rand() - 0.5) * 900;
-        const r = 0.7 + rand() * 1.3;
-        const op = 0.08 + rand() * 0.25;
-        const st = svgEl('circle', { cx: x, cy: y, r: r, class: 'bg-star', opacity: op.toFixed(2) });
-        layerBg.appendChild(st);
-        bgStars.push(st);
+      // Build Database Galaxy Nodes (Fibonacci Sphere of DB orbs)
+      const S = Math.max(1, sources.length);
+      galaxyNodes = [];
+      galaxyBySource = {};
+      for (let i = 0; i < sources.length; i++) {
+        const s = sources[i];
+        const phi = Math.acos(1 - 2 * (i + 0.5) / S);
+        const th = Math.PI * (1 + Math.sqrt(5)) * i;
+        const tCount = sourceTableMap[s].length;
+        const gNode = {
+          kind: 'db',
+          source: s,
+          label: srcLabel(s),
+          tableCount: tCount,
+          intraFks: intraFkBySource[s] || 0,
+          crossFks: 0,
+          color: sColor[s],
+          radiusBase: Math.min(30, 10 + Math.log2(tCount + 1) * 3.1),
+          cur: { x: Math.sin(phi) * Math.cos(th), y: Math.cos(phi), z: Math.sin(phi) * Math.sin(th) }
+        };
+        galaxyNodes.push(gNode);
+        galaxyBySource[s] = gNode;
       }
 
-      // 2. Pre-create reusable edge elements (self-ref uses <path>, normal uses <line>)
-      // Huge corpora: edge label texts only ever appear around a focused
-      // table, so skip pre-creating one (or two) per pair and make them
-      // lazily in ensurePairLabels(); keeps ~10k+ unused <text> nodes away.
-      const bigSchema = pairs.length > 2500;
-      pairs.forEach(pr => {
-        const totalFks = pr.out.length + pr.inn.length;
-        if (pr.self) {
-          const path = svgEl('path', {
-            class: 'edge self-edge',
-            'stroke-width': 1.8
-          });
-          layerEdges.appendChild(path);
-          pr.el = path;
-        } else {
-          const line = svgEl('line', {
-            class: pr.cross ? 'edge cross' : 'edge',
-            'stroke-width': totalFks > 1 ? 2.4 : 1.25
-          });
-          layerEdges.appendChild(line);
-          pr.el = line;
+      galaxyLinks = [];
+      Object.keys(galaxyEdgeMap).forEach(k => {
+        const e = galaxyEdgeMap[k];
+        const sN = galaxyBySource[e.sSrc];
+        const tN = galaxyBySource[e.tSrc];
+        if (sN && tN) {
+          sN.crossFks += e.count;
+          tN.crossFks += e.count;
+          galaxyLinks.push({ s: sN, t: tN, count: e.count });
         }
-
-        if (!bigSchema) ensurePairLabels(pr);
       });
 
-      // 3. Pre-create reusable node groups
+      // Automatically choose the cleanest view for huge multi-DB corpora
+      if (autoSelectMode) {
+        if (data.length > HUGE_TABLE_THRESHOLD && sources.length > 1) {
+          mode = 'galaxy';
+          toast(`Large schema (${data.length.toLocaleString()} tables · ${sources.length} DBs) → opened in DB Galaxy mode`);
+        } else {
+          mode = 'graph';
+        }
+      }
+
+      // Refresh UI
+      buildLegend();
+      buildSide(searchQuery);
+      syncModeUI();
+      updateStageHud();
+      if (mode === 'cards') buildCards(searchQuery);
+      recomputeVisibleSpherePositions();
+      needsRender = true;
+    }
+
+    /* Redistribute currently visible tables cleanly on the sphere
+       (critical when soloing 1 DB out of 67 so its tables fill the whole sphere!) */
+    function recomputeVisibleSpherePositions() {
+      const vis = nodes.filter(n => isSourceVisible(n.source));
+      const N = Math.max(1, vis.length);
+      for (let i = 0; i < vis.length; i++) {
+        const phi = Math.acos(1 - 2 * (i + 0.5) / N);
+        const th = Math.PI * (1 + Math.sqrt(5)) * i;
+        const n = vis[i];
+        n.sph.x = Math.sin(phi) * Math.cos(th);
+        n.sph.y = Math.cos(phi);
+        n.sph.z = Math.sin(phi) * Math.sin(th);
+        if (!selectedKey) {
+          n.cur.x = n.sph.x;
+          n.cur.y = n.sph.y;
+          n.cur.z = n.sph.z;
+          n.alpha = 1;
+        }
+      }
       nodes.forEach(n => {
-        const g = svgEl('g', { class: 'node' });
-        g.style.setProperty('--sc', sColor[n.source] || '#3b82f6');
-
-        const halo = svgEl('circle', { class: 'halo', cx: 0, cy: 0, r: 22 });
-        const core = svgEl('circle', { class: 'core', cx: 0, cy: 0, r: 14 });
-        const shine = svgEl('circle', { class: 'shine', cx: -4, cy: -4, r: 4.5 });
-        const lbl = svgEl('text', { class: 'nlabel', x: 0, y: -22 });
-        lbl.textContent = n.name;
-
-        g.appendChild(halo);
-        g.appendChild(core);
-        g.appendChild(shine);
-        g.appendChild(lbl);
-
-        // Node hover & click handlers
-        g.addEventListener('mouseenter', () => {
-          n.hovered = true;
-          renderFrame();
-        });
-        g.addEventListener('mouseleave', () => {
-          n.hovered = false;
-          renderFrame();
-        });
-        g.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (dragMoved > 5) return;
-          selectTable(n.key);
-        });
-
-        layerNodes.appendChild(g);
-        n.el = g;
-        n.haloEl = halo;
-        n.coreEl = core;
-        n.shineEl = shine;
-        n.labelEl = lbl;
+        if (!isSourceVisible(n.source)) {
+          n.alpha = 0;
+          n.tgtAlpha = 0;
+        }
       });
     }
 
     /* =====================================================================
-       5. 3D PROJECTION & SUNFLOWER FOCUS TRANSITION ENGINE
+       5. 3D PROJECTION & CAMERA ANIMATIONS
        ===================================================================== */
     function project3D(x0, y0, z0) {
       const cosY = Math.cos(rot.ry), sinY = Math.sin(rot.ry);
@@ -2237,37 +2013,33 @@ CREATE TABLE projects (
       const y2 = y0 * cosX - z1 * sinX;
       const z2 = y0 * sinX + z1 * cosX;
 
-      const f = 2.2 / (2.2 - z2);
+      const f = 2.25 / (2.25 - z2);
+      const wx = x1 * SPHERE_RADIUS * f;
+      const wy = y2 * SPHERE_RADIUS * f;
+
       return {
-        x: x1 * SPHERE_RADIUS * f,
-        y: y2 * SPHERE_RADIUS * f,
+        sx: cw * 0.5 + (wx - pan.x) * zoom,
+        sy: ch * 0.5 + (wy - pan.y) * zoom,
         z: z2,
         f: f
       };
     }
 
-    function updateViewBox() {
-      const W = svg.clientWidth || 800;
-      const H = svg.clientHeight || 520;
-      svg.setAttribute(
-        'viewBox',
-        (-W / 2 / zoom + pan.x).toFixed(2) + ' ' +
-        (-H / 2 / zoom + pan.y).toFixed(2) + ' ' +
-        (W / zoom).toFixed(2) + ' ' +
-        (H / zoom).toFixed(2)
-      );
+    function fitBaseZoom() {
+      return Math.max(0.5, Math.min(1.25, Math.min(cw, ch) / 700));
     }
 
     function startTransition(targetRot, targetZoom, targetPan, durationMs) {
-      nodes.forEach(n => {
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
         n.start.x = n.cur.x;
         n.start.y = n.cur.y;
         n.start.z = n.cur.z;
         n.startAlpha = n.alpha;
-      });
+      }
       anim = {
         startTime: performance.now(),
-        duration: durationMs || 420,
+        duration: durationMs || 400,
         startRot: { rx: rot.rx, ry: rot.ry },
         targetRot: { rx: targetRot.rx, ry: targetRot.ry },
         startZoom: zoom,
@@ -2275,324 +2047,626 @@ CREATE TABLE projects (
         startPan: { x: pan.x, y: pan.y },
         targetPan: { x: targetPan.x, y: targetPan.y }
       };
+      needsRender = true;
     }
 
     function computeFocusTargets(centerKey) {
       const c = byKey[centerKey];
       if (!c) return;
 
-      // Gather directly connected neighbors (both outgoing FKs and incoming refs)
       const nearSet = new Set([centerKey]);
-      links.forEach(l => {
-        if (!isSourceVisible(l.s.source) || !isSourceVisible(l.t.source)) return;
-        if (l.s.key === centerKey) nearSet.add(l.t.key);
-        if (l.t.key === centerKey) nearSet.add(l.s.key);
-      });
-      focusSet = new Set(nearSet);
+      // Outgoing FKs
+      for (let i = 0; i < c.fks.length; i++) {
+        const fk = c.fks[i];
+        const to = byKeyLower[(c.source + '|' + fk.ref_table).toLowerCase()] || byNameLower[fk.ref_table.toLowerCase()];
+        if (to && isSourceVisible(to.source)) nearSet.add(to.key);
+      }
+      // Incoming FKs
+      const inc = incomingByKey[centerKey] || [];
+      for (let i = 0; i < inc.length; i++) {
+        if (isSourceVisible(inc[i].s.source)) nearSet.add(inc[i].s.key);
+      }
 
-      const neighbors = nodes
-        .filter(n => n.key !== centerKey && nearSet.has(n.key) && isSourceVisible(n.source))
-        .sort((a, b) => a.name.localeCompare(b.name));
+      const neighbors = [];
+      nearSet.forEach(k => {
+        if (k !== centerKey && byKey[k]) neighbors.push(byKey[k]);
+      });
+      neighbors.sort((a, b) => a.name.localeCompare(b.name));
 
       const N = neighbors.length;
       const GA = Math.PI * (1 + Math.sqrt(5));
       const FZ = 0.35;
 
-      // Hub sits cleanly at the center facing the camera
       c.tgt.x = 0;
       c.tgt.y = 0;
       c.tgt.z = FZ;
       c.tgtAlpha = 1;
 
-      // Neighbors arrange on a clean 2D Sunflower Focus Disc
-      neighbors.forEach((n, i) => {
+      for (let i = 0; i < N; i++) {
+        const n = neighbors[i];
         let r, angle;
-        if (N <= 7) {
-          // Evenly spaced ring for small clusters — super clean and symmetrical
-          r = N === 1 ? 0.65 : 0.72;
+        if (N <= 8) {
+          r = N === 1 ? 0.62 : 0.72;
           angle = -Math.PI / 2 + (2 * Math.PI * i) / N;
         } else {
-          // Golden-angle sunflower disc for larger clusters
-          r = 0.36 + 0.72 * Math.sqrt((i + 0.5) / N);
+          r = 0.34 + 0.76 * Math.sqrt((i + 0.5) / N);
           angle = -Math.PI / 2 + GA * i;
         }
         n.tgt.x = r * Math.cos(angle);
         n.tgt.y = r * Math.sin(angle);
         n.tgt.z = FZ;
         n.tgtAlpha = 1;
-      });
+      }
 
-      // Unrelated nodes smoothly fade out
-      nodes.forEach(n => {
-        if (!nearSet.has(n.key) || !isSourceVisible(n.source)) {
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (!nearSet.has(n.key)) {
           n.tgt.x = n.sph.x * 1.15;
           n.tgt.y = n.sph.y * 1.15;
           n.tgt.z = n.sph.z * 1.15;
           n.tgtAlpha = 0;
         }
-      });
+      }
 
-      // Compute ideal zoom to fit the sunflower cluster comfortably
-      const W = svg.clientWidth || 800;
-      const H = svg.clientHeight || 520;
-      const maxExtent = SPHERE_RADIUS * (2.2 / (2.2 - FZ)) * (N <= 7 ? 1.05 : 1.32);
-      const fitZoom = Math.max(0.45, Math.min(1.65, (0.86 * Math.min(W, H)) / (2 * maxExtent)));
-
-      // Smoothly unwind rot.ry toward nearest multiple of 2*PI so it doesn't spin wildly
+      const maxExtent = SPHERE_RADIUS * (2.25 / (2.25 - FZ)) * (N <= 8 ? 1.05 : 1.3);
+      const fitZoom = Math.max(0.45, Math.min(1.6, (0.86 * Math.min(cw, ch)) / (2 * maxExtent)));
       const nearestZeroY = Math.round(rot.ry / (Math.PI * 2)) * Math.PI * 2;
-      startTransition({ rx: 0, ry: nearestZeroY }, fitZoom, { x: 0, y: 0 }, 420);
+      startTransition({ rx: 0, ry: nearestZeroY }, fitZoom, { x: 0, y: 0 }, 400);
     }
 
     function computeSphereTargets() {
-      nodes.forEach(n => {
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
         n.tgt.x = n.sph.x;
         n.tgt.y = n.sph.y;
         n.tgt.z = n.sph.z;
         n.tgtAlpha = isSourceVisible(n.source) ? 1 : 0;
-      });
-      const W = svg.clientWidth || 800;
-      const H = svg.clientHeight || 520;
-      const baseZoom = Math.max(0.55, Math.min(1.15, Math.min(W, H) / 760));
-      startTransition({ rx: -0.28, ry: 0.55 }, baseZoom, { x: 0, y: 0 }, 440);
+      }
+      startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 400);
     }
 
     /* =====================================================================
-       6. HIGH-PERFORMANCE RENDER LOOP (60FPS IN-PLACE DOM UPDATES)
+       6. HIGH-SPEED CANVAS 2D RENDERER WITH COLLISION-FREE LABELS
+       Handles 10,000+ tables & 25,000+ relations smoothly at 60fps
        ===================================================================== */
-    // Lazy label creation: the (at most 2) label texts for one edge pair.
-    // Pre-created up-front for small schemas; created on first hot use on
-    // huge corpora to keep the initial DOM small and the boot instant.
-    function ensurePairLabels(pr) {
-      if (pr.labelOutEl) return;
-      const lbOut = svgEl('text', {
-        class: pr.cross ? 'elabel cross' : 'elabel',
-        display: 'none'
-      });
-      layerElabels.appendChild(lbOut);
-      pr.labelOutEl = lbOut;
+    function resizeCanvas() {
+      const rect = graphWrapEl.getBoundingClientRect();
+      cw = Math.max(100, Math.floor(rect.width));
+      ch = Math.max(100, Math.floor(rect.height));
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(cw * dpr);
+      canvas.height = Math.floor(ch * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      needsRender = true;
+    }
 
-      if (!pr.self && pr.out.length && pr.inn.length) {
-        const lbInn = svgEl('text', {
-          class: pr.cross ? 'elabel cross' : 'elabel',
-          display: 'none'
+    function drawBackground() {
+      // Deep radial space gradient
+      const grad = ctx.createRadialGradient(cw * 0.5, ch * 0.45, 20, cw * 0.5, ch * 0.48, Math.max(cw, ch) * 0.72);
+      grad.addColorStop(0, '#112140');
+      grad.addColorStop(0.6, '#081021');
+      grad.addColorStop(1, '#040812');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, cw, ch);
+
+      // Subtle starfield
+      ctx.fillStyle = '#93c5fd';
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i];
+        ctx.globalAlpha = s.a;
+        ctx.beginPath();
+        ctx.arc(s.nx * cw, s.ny * ch, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Subtle orbital reference rings centered on planet
+      const cx = cw * 0.5 - pan.x * zoom;
+      const cy = ch * 0.5 - pan.y * zoom;
+      ctx.save();
+      ctx.setLineDash([4, 7]);
+      ctx.lineWidth = 1;
+      [205, 305, 420].forEach((r, idx) => {
+        ctx.strokeStyle = idx === 1 ? 'rgba(96, 165, 250, 0.11)' : 'rgba(96, 165, 250, 0.055)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * zoom, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    /* Fast screen-space bounding-box collision filter so labels NEVER pile into unreadable soup */
+    function createLabelPlacer() {
+      const placed = [];
+      return function tryPlace(x, y, w, h, force) {
+        const x1 = x - w * 0.5 - 3;
+        const y1 = y - h - 2;
+        const x2 = x + w * 0.5 + 3;
+        const y2 = y + 3;
+        if (!force) {
+          if (x2 < 0 || x1 > cw || y2 < 0 || y1 > ch) return false;
+          for (let i = 0; i < placed.length; i++) {
+            const b = placed[i];
+            if (x1 < b[2] && x2 > b[0] && y1 < b[3] && y2 > b[1]) return false;
+          }
+        }
+        placed.push([x1, y1, x2, y2]);
+        return true;
+      };
+    }
+
+    function drawArrowHead(x, y, angle, size, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - size * Math.cos(angle - 0.42), y - size * Math.sin(angle - 0.42));
+      ctx.lineTo(x - size * Math.cos(angle + 0.42), y - size * Math.sin(angle + 0.42));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawLabelPill(text, x, y, color, fontSize, bold) {
+      ctx.font = (bold ? '700 ' : '600 ') + fontSize + 'px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(5, 10, 20, 0.92)';
+      ctx.strokeText(text, x, y);
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+    }
+
+    /* --- RENDER MODE A: DATABASE GALAXY (1 Orb per DB, silky-smooth for 67+ DBs) --- */
+    function renderGalaxy() {
+      const projList = [];
+      const projBySource = {};
+      const hasSearch = searchQuery.length > 0;
+
+      for (let i = 0; i < galaxyNodes.length; i++) {
+        const g = galaxyNodes[i];
+        if (!isSourceVisible(g.source)) continue;
+        const p = project3D(g.cur.x, g.cur.y, g.cur.z);
+        const r = Math.max(5, g.radiusBase * Math.max(0.55, p.f) * Math.min(1.6, Math.sqrt(zoom)));
+        const matches = hasSearch && (
+          g.source.toLowerCase().indexOf(searchQuery) >= 0 ||
+          sourceTableMap[g.source].some(t => t.name.toLowerCase().indexOf(searchQuery) >= 0)
+        );
+        const item = { node: g, sx: p.sx, sy: p.sy, z: p.z, f: p.f, r: r, matches: matches };
+        projList.push(item);
+        projBySource[g.source] = item;
+      }
+
+      // 1. Draw cross-DB aggregated links
+      if (showEdges && galaxyLinks.length) {
+        ctx.save();
+        for (let i = 0; i < galaxyLinks.length; i++) {
+          const gl = galaxyLinks[i];
+          const a = projBySource[gl.s.source];
+          const b = projBySource[gl.t.source];
+          if (!a || !b) continue;
+
+          const isHot = hoveredItem && hoveredItem.kind === 'db' &&
+            (hoveredItem.source === gl.s.source || hoveredItem.source === gl.t.source);
+          const depth = ((a.z + b.z) * 0.5 + 1) * 0.5;
+
+          ctx.beginPath();
+          ctx.moveTo(a.sx, a.sy);
+          ctx.lineTo(b.sx, b.sy);
+          if (isHot) {
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+            ctx.lineWidth = Math.min(4.5, 1.4 + Math.log2(gl.count + 1) * 0.65);
+            ctx.setLineDash([7, 4]);
+          } else {
+            ctx.strokeStyle = 'rgba(251, 191, 36, ' + (0.06 + 0.24 * depth).toFixed(3) + ')';
+            ctx.lineWidth = Math.min(2.6, 0.7 + Math.log2(gl.count + 1) * 0.35);
+            ctx.setLineDash([5, 5]);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // 2. Depth-sort DB orbs back-to-front
+      projList.sort((a, b) => a.z - b.z);
+      lastProjectedItems = projList;
+
+      for (let i = 0; i < projList.length; i++) {
+        const it = projList[i];
+        const g = it.node;
+        const isHover = hoveredItem === g;
+        const depthAlpha = 0.36 + 0.64 * Math.max(0, (it.z + 1) * 0.5);
+        const alpha = (hasSearch && !it.matches && !isHover) ? depthAlpha * 0.2 : depthAlpha;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Outer soft aura
+        if (isHover || it.matches) {
+          ctx.beginPath();
+          ctx.arc(it.sx, it.sy, it.r + 8, 0, Math.PI * 2);
+          ctx.strokeStyle = isHover ? '#f97316' : '#22d3ee';
+          ctx.lineWidth = 2.4;
+          ctx.stroke();
+        }
+
+        // Planet body
+        const grad = ctx.createRadialGradient(
+          it.sx - it.r * 0.3, it.sy - it.r * 0.3, it.r * 0.1,
+          it.sx, it.sy, it.r
+        );
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.28, g.color);
+        grad.addColorStop(1, '#0b1326');
+
+        ctx.beginPath();
+        ctx.arc(it.sx, it.sy, it.r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.lineWidth = isHover ? 2.4 : 1.25;
+        ctx.strokeStyle = isHover ? '#ffffff' : 'rgba(255,255,255,0.55)';
+        ctx.stroke();
+
+        // Table count inside big orbs
+        if (it.r >= 13) {
+          ctx.font = '700 ' + Math.max(9.5, Math.min(12, it.r * 0.52)).toFixed(0) + 'px Inter, system-ui, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(g.tableCount), it.sx, it.sy + 0.5);
+        }
+
+        ctx.restore();
+      }
+
+      // 3. Collision-free labels (front-to-back priority)
+      if (labelMode !== 'off') {
+        const placer = createLabelPlacer();
+        const maxLabels = labelMode === 'all' ? 95 : 42;
+        let drawn = 0;
+
+        // Priority pass: hovered + matches first, then front-most orbs
+        const labelOrder = projList.slice().sort((a, b) => {
+          const pa = (a.node === hoveredItem ? 100 : 0) + (a.matches ? 50 : 0) + a.z;
+          const pb = (b.node === hoveredItem ? 100 : 0) + (b.matches ? 50 : 0) + b.z;
+          return pb - pa;
         });
-        layerElabels.appendChild(lbInn);
-        pr.labelInnEl = lbInn;
+
+        for (let i = 0; i < labelOrder.length; i++) {
+          const it = labelOrder[i];
+          const g = it.node;
+          const force = (g === hoveredItem);
+          if (!force && drawn >= maxLabels) break;
+          if (!force && labelMode === 'smart' && it.z < -0.05 && !it.matches) continue;
+
+          const txt = g.label.length > 26 ? g.label.slice(0, 24) + '…' : g.label;
+          const estW = txt.length * 6.8 + 10;
+          const ly = it.sy - it.r - 7;
+
+          if (placer(it.sx, ly, estW, 14, force)) {
+            ctx.globalAlpha = force ? 1 : (0.55 + 0.45 * Math.max(0, (it.z + 1) * 0.5));
+            drawLabelPill(txt, it.sx, ly, force ? '#ffedd5' : '#f1f5f9', force ? 12.5 : 11.5, force);
+            drawn++;
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    /* --- RENDER MODE B: 3D TABLE NETWORK + SUNFLOWER FOCUS (60FPS CANVAS) --- */
+    function renderTableNetwork() {
+      const hasSearch = searchQuery.length > 0;
+      const isFocused = Boolean(selectedKey);
+      const isDraggingNow = Boolean(dragState);
+
+      // Collect visible nodes and project them
+      const projList = [];
+      const pMap = {};
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (!isSourceVisible(n.source) || n.alpha <= 0.02) continue;
+        const p = project3D(n.cur.x, n.cur.y, n.cur.z);
+        const matches = hasSearch && matchTable(n, searchQuery);
+        const item = { node: n, sx: p.sx, sy: p.sy, z: p.z, f: p.f, r: 6, matches: matches };
+        projList.push(item);
+        pMap[n.key] = item;
+      }
+
+      // Dynamic adaptive node radius based on visible table count (prevents blob wall!)
+      const visCount = projList.length;
+      let baseR = 13.5;
+      if (isFocused) baseR = 14.5;
+      else if (visCount > 3000) baseR = 3.0;
+      else if (visCount > 1000) baseR = 4.2;
+      else if (visCount > 350) baseR = 5.8;
+      else if (visCount > 120) baseR = 8.2;
+      else if (visCount > 45) baseR = 10.5;
+
+      const zoomScale = Math.min(1.85, Math.max(0.6, Math.sqrt(zoom)));
+      for (let i = 0; i < projList.length; i++) {
+        const it = projList[i];
+        const isSel = selectedKey === it.node.key;
+        const boost = isSel ? 1.28 : (it.matches ? 1.22 : 1);
+        it.r = Math.max(2.0, baseR * boost * Math.max(0.55, it.f) * zoomScale);
+      }
+
+      // 1. Draw Edges (with smart LOD budget for 20,000+ relations!)
+      const hotPairs = [];
+      if (showEdges || isFocused) {
+        // Determine edge sampling stride when rendering huge unfocused graphs
+        const totalPairs = pairs.length;
+        let bgStride = 1;
+        if (!isFocused && totalPairs > 2500) {
+          bgStride = isDraggingNow ? Math.ceil(totalPairs / 900) : Math.ceil(totalPairs / 2600);
+        }
+
+        ctx.save();
+        ctx.lineCap = 'round';
+
+        // Fast batched path for non-hot same-DB edges (HUGE performance win on 20k edges!)
+        if (showEdges && !isFocused) {
+          ctx.beginPath();
+          let sameCount = 0;
+          const maxBgAlpha = totalPairs > 3000 ? 0.14 : (totalPairs > 600 ? 0.22 : 0.34);
+          ctx.strokeStyle = hasSearch
+            ? 'rgba(100, 116, 139, 0.08)'
+            : 'rgba(100, 116, 139, ' + maxBgAlpha + ')';
+          ctx.lineWidth = totalPairs > 1500 ? 0.7 : 1.0;
+
+          for (let i = 0; i < totalPairs; i += bgStride) {
+            const pr = pairs[i];
+            if (pr.self || pr.cross) continue;
+            const a = pMap[pr.s.key];
+            const b = pMap[pr.t.key];
+            if (!a || !b) continue;
+            // Cull offscreen edges
+            if ((a.sx < -40 && b.sx < -40) || (a.sx > cw + 40 && b.sx > cw + 40) ||
+                (a.sy < -40 && b.sy < -40) || (a.sy > ch + 40 && b.sy > ch + 40)) continue;
+            ctx.moveTo(a.sx, a.sy);
+            ctx.lineTo(b.sx, b.sy);
+            sameCount++;
+          }
+          if (sameCount > 0) ctx.stroke();
+
+          // Batched pass for cross-DB dashed amber edges
+          ctx.beginPath();
+          let crossCount = 0;
+          ctx.strokeStyle = hasSearch
+            ? 'rgba(251, 191, 36, 0.10)'
+            : 'rgba(251, 191, 36, ' + (totalPairs > 2000 ? 0.18 : 0.32) + ')';
+          ctx.lineWidth = totalPairs > 1500 ? 0.85 : 1.3;
+          ctx.setLineDash([6, 5]);
+          for (let i = 0; i < totalPairs; i += bgStride) {
+            const pr = pairs[i];
+            if (pr.self || !pr.cross) continue;
+            const a = pMap[pr.s.key];
+            const b = pMap[pr.t.key];
+            if (!a || !b) continue;
+            ctx.moveTo(a.sx, a.sy);
+            ctx.lineTo(b.sx, b.sy);
+            crossCount++;
+          }
+          if (crossCount > 0) ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Collect hot edges (for selected table or hovered table)
+        const focusKey = selectedKey || (hoveredItem && hoveredItem.kind === 'table' ? hoveredItem.key : null);
+        if (focusKey) {
+          for (let i = 0; i < totalPairs; i++) {
+            const pr = pairs[i];
+            if (pr.s.key === focusKey || pr.t.key === focusKey) {
+              const a = pMap[pr.s.key];
+              const b = pMap[pr.t.key];
+              if (a && b) hotPairs.push({ pr: pr, a: a, b: b });
+            }
+          }
+        }
+
+        // Draw hot edges with crisp arrows & glow
+        for (let i = 0; i < hotPairs.length; i++) {
+          const { pr, a, b } = hotPairs[i];
+          const alpha = Math.min(pr.s.alpha, pr.t.alpha);
+          ctx.globalAlpha = alpha * (isFocused ? 0.96 : 0.82);
+
+          if (pr.self) {
+            const r = a.r;
+            const loopR = r * 1.9;
+            const sx = a.sx + r * 0.68;
+            const sy = a.sy - r * 0.68;
+            const ex = a.sx + r * 1.02;
+            const ey = a.sy + r * 0.32;
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 2.2;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.bezierCurveTo(a.sx + loopR * 1.2, a.sy - loopR * 1.5, a.sx + loopR * 1.9, a.sy + loopR * 0.4, ex, ey);
+            ctx.stroke();
+            drawArrowHead(ex, ey, Math.atan2(ey - (a.sy + loopR * 0.4), ex - (a.sx + loopR * 1.9)), 8, '#22d3ee');
+          } else {
+            const dx = b.sx - a.sx;
+            const dy = b.sy - a.sy;
+            const dist = Math.hypot(dx, dy) || 1;
+            const padA = a.r + 4;
+            const padB = b.r + 4;
+            let x1 = a.sx, y1 = a.sy, x2 = b.sx, y2 = b.sy;
+            if (dist > padA + padB + 6) {
+              x1 = a.sx + (dx / dist) * padA;
+              y1 = a.sy + (dy / dist) * padA;
+              x2 = b.sx - (dx / dist) * padB;
+              y2 = b.sy - (dy / dist) * padB;
+            }
+            const col = pr.cross ? '#fbbf24' : '#f97316';
+            const totalFks = pr.out.length + pr.inn.length;
+            ctx.strokeStyle = col;
+            ctx.lineWidth = totalFks > 1 ? 3.2 : 2.3;
+            ctx.setLineDash(pr.cross ? [7, 5] : []);
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            const ang = Math.atan2(y2 - y1, x2 - x1);
+            if (pr.out.length) drawArrowHead(x2, y2, ang, 8.5, col);
+            if (pr.inn.length) drawArrowHead(x1, y1, ang + Math.PI, 8.5, col);
+          }
+        }
+        ctx.restore();
+      }
+
+      // 2. Depth-sort nodes back-to-front & render circles
+      projList.sort((a, b) => a.z - b.z);
+      lastProjectedItems = projList;
+
+      const simpleDraw = visCount > 1200 && !isFocused;
+
+      for (let i = 0; i < projList.length; i++) {
+        const it = projList[i];
+        const n = it.node;
+        // Viewport culling
+        if (it.sx < -40 || it.sx > cw + 40 || it.sy < -40 || it.sy > ch + 40) continue;
+
+        const isSel = selectedKey === n.key;
+        const isHover = hoveredItem === n;
+        let alpha = isFocused ? n.alpha : ((0.30 + 0.70 * Math.max(0, (it.z + 1) * 0.5)) * n.alpha);
+        if (hasSearch && !it.matches && !isSel && !isHover) alpha *= 0.16;
+
+        ctx.globalAlpha = alpha;
+
+        if (isSel || isHover || it.matches) {
+          ctx.beginPath();
+          ctx.arc(it.sx, it.sy, it.r + (isSel ? 7 : 5), 0, Math.PI * 2);
+          ctx.strokeStyle = isSel ? '#f97316' : (it.matches ? '#22d3ee' : '#ffffff');
+          ctx.lineWidth = isSel ? 2.5 : 1.8;
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.arc(it.sx, it.sy, it.r, 0, Math.PI * 2);
+        ctx.fillStyle = isSel ? '#f97316' : n.color;
+        ctx.fill();
+
+        if (!simpleDraw || isSel || isHover || it.matches) {
+          ctx.lineWidth = isSel ? 2.4 : (it.r > 5 ? 1.15 : 0.65);
+          ctx.strokeStyle = isSel ? '#ffedd5' : 'rgba(255, 255, 255, 0.58)';
+          ctx.stroke();
+
+          if (it.r >= 7) {
+            ctx.beginPath();
+            ctx.arc(it.sx - it.r * 0.3, it.sy - it.r * 0.32, it.r * 0.3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+            ctx.fill();
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      // 3. Draw Hot Edge Column Labels (only in Focus Mode so they're clean & readable)
+      if (isFocused && hotPairs.length) {
+        const edgePlacer = createLabelPlacer();
+        for (let i = 0; i < hotPairs.length; i++) {
+          const { pr, a, b } = hotPairs[i];
+          const alpha = Math.min(pr.s.alpha, pr.t.alpha);
+          ctx.globalAlpha = alpha;
+          if (pr.self) {
+            const loopR = a.r * 1.9;
+            drawLabelPill('↻ ' + pr.out.join(' · '), a.sx + loopR * 1.45, a.sy - loopR * 0.7, '#67e8f9', 10.5, false);
+          } else {
+            const hubIsT = selectedKey === pr.t.key;
+            const fromP = hubIsT ? b : a;
+            const toP = hubIsT ? a : b;
+            const cols = pr.out.length && pr.inn.length
+              ? [pr.out.join(' · '), pr.inn.join(' · ')]
+              : [pr.out.concat(pr.inn).join(' · ')];
+            const fracs = cols.length === 2 ? [0.54, 0.72] : [0.62];
+            const lblColor = pr.cross ? '#fde68a' : '#fdba74';
+
+            for (let c = 0; c < cols.length; c++) {
+              const txt = cols[c];
+              const lx = fromP.sx + (toP.sx - fromP.sx) * fracs[c];
+              const ly = fromP.sy + (toP.sy - fromP.sy) * fracs[c] - 6;
+              if (edgePlacer(lx, ly, txt.length * 6 + 6, 12, cols.length === 1 && hotPairs.length <= 12)) {
+                drawLabelPill(txt, lx, ly, lblColor, 10.5, false);
+              }
+            }
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // 4. Collision-Free Node Labels (never creates unreadable white text soup!)
+      if (labelMode !== 'off' || isFocused || hasSearch || hoveredItem) {
+        const placer = createLabelPlacer();
+        const maxLabels = isFocused ? 80 : (labelMode === 'all' ? 85 : 36);
+        let drawn = 0;
+
+        // Sort front-to-back with priority for selected, hovered, and search matches
+        const candidates = [];
+        for (let i = 0; i < projList.length; i++) {
+          const it = projList[i];
+          const n = it.node;
+          const isSel = selectedKey === n.key;
+          const isHover = hoveredItem === n;
+          if (!isSel && !isHover && !it.matches && !isFocused) {
+            if (labelMode === 'off') continue;
+            if (labelMode === 'smart' && it.z < 0.2) continue;
+          }
+          candidates.push({
+            it: it,
+            prio: (isSel ? 1000 : 0) + (isHover ? 500 : 0) + (it.matches ? 200 : 0) + it.z * 10 + Math.min(5, n.deg * 0.2)
+          });
+        }
+        candidates.sort((a, b) => b.prio - a.prio);
+
+        for (let i = 0; i < candidates.length; i++) {
+          const it = candidates[i].it;
+          const n = it.node;
+          const isSel = selectedKey === n.key;
+          const isHover = hoveredItem === n;
+          const force = isSel || isHover;
+          if (!force && drawn >= maxLabels) break;
+
+          const txt = n.name.length > 28 ? n.name.slice(0, 26) + '…' : n.name;
+          const fSize = isSel ? 13 : (isHover ? 12.5 : 11);
+          const estW = txt.length * (fSize * 0.58) + 8;
+          const ly = it.sy - it.r - 6;
+
+          if (placer(it.sx, ly, estW, fSize + 3, force)) {
+            ctx.globalAlpha = force ? 1 : (isFocused ? n.alpha : Math.max(0.45, (it.z + 1) * 0.55));
+            drawLabelPill(txt, it.sx, ly, isSel ? '#ffedd5' : (it.matches ? '#67e8f9' : '#f1f5f9'), fSize, isSel || isHover);
+            drawn++;
+          }
+        }
+        ctx.globalAlpha = 1;
       }
     }
 
     function renderFrame() {
-      const projected = new Array(nodes.length);
-      const pMap = {};
-      const hasSearch = searchQuery.length > 0;
-
-      // Project all nodes
-      for (let i = 0; i < nodes.length; i++) {
-        const n = nodes[i];
-        const p = project3D(n.cur.x, n.cur.y, n.cur.z);
-        projected[i] = { n: n, p: p };
-        pMap[n.key] = p;
-      }
-
-      // 1. Update Edges in place
-      for (let i = 0; i < pairs.length; i++) {
-        const pr = pairs[i];
-        const visS = isSourceVisible(pr.s.source) && pr.s.alpha > 0.04;
-        const visT = isSourceVisible(pr.t.source) && pr.t.alpha > 0.04;
-        const edgeAlpha = Math.min(pr.s.alpha, pr.t.alpha);
-
-        const isHot = Boolean(selectedKey && (pr.s.key === selectedKey || pr.t.key === selectedKey));
-        // Focus view: hub edges stay hot, edges BETWEEN two neighbors show
-        // dimmed (the local web of relations around the hub), rest hide
-        const dimNeighbor = Boolean(selectedKey && !isHot && !pr.self
-          && focusSet.has(pr.s.key) && focusSet.has(pr.t.key));
-
-        if (!visS || !visT || (selectedKey && !isHot && !dimNeighbor)) {
-          pr.el.setAttribute('display', 'none');
-          if (pr.labelOutEl) pr.labelOutEl.setAttribute('display', 'none');
-          if (pr.labelInnEl) pr.labelInnEl.setAttribute('display', 'none');
-          continue;
-        }
-
-        pr.el.removeAttribute('display');
-        pr.el.classList.toggle('hot', isHot);
-        pr.el.classList.toggle('dimrel', dimNeighbor);
-
-        const a = pMap[pr.s.key];
-        const b = pMap[pr.t.key];
-
-        if (pr.self) {
-          // Graceful self-referencing loop arcing above-right of the node
-          const r = 14.5 * Math.max(0.62, a.f);
-          const loopR = r * 1.9;
-          const sx = a.x + r * 0.68;
-          const sy = a.y - r * 0.68;
-          const ex = a.x + r * 0.95;
-          const ey = a.y + r * 0.35;
-          const cx1 = a.x + loopR * 1.2;
-          const cy1 = a.y - loopR * 1.5;
-          const cx2 = a.x + loopR * 1.9;
-          const cy2 = a.y + loopR * 0.4;
-          pr.el.setAttribute('d', `M ${sx.toFixed(1)} ${sy.toFixed(1)} C ${cx1.toFixed(1)} ${cy1.toFixed(1)}, ${cx2.toFixed(1)} ${cy2.toFixed(1)}, ${ex.toFixed(1)} ${ey.toFixed(1)}`);
-          pr.el.style.stroke = isHot ? '#22d3ee' : '#38bdf8';
-          pr.el.style.opacity = ((isHot ? 0.95 : 0.25 + 0.35 * ((a.z + 1) / 2)) * edgeAlpha).toFixed(3);
-          if (isHot) {
-            pr.el.setAttribute('marker-end', 'url(#fkSelf)');
-            ensurePairLabels(pr);
-            pr.labelOutEl.removeAttribute('display');
-            pr.labelOutEl.setAttribute('x', (a.x + loopR * 1.45).toFixed(1));
-            pr.labelOutEl.setAttribute('y', (a.y - loopR * 0.65).toFixed(1));
-            pr.labelOutEl.style.fill = '#67e8f9';
-            pr.labelOutEl.textContent = '↻ ' + pr.out.join(' · ');
-            pr.labelOutEl.style.opacity = edgeAlpha.toFixed(3);
-          } else {
-            pr.el.removeAttribute('marker-end');
-            if (pr.labelOutEl) pr.labelOutEl.setAttribute('display', 'none');
-          }
-        } else {
-          // Shorten line endpoints slightly when hot so arrowheads touch circle edge cleanly
-          let x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y;
-          if (isHot) {
-            const dx = b.x - a.x;
-            const dy = b.y - a.y;
-            const dist = Math.hypot(dx, dy) || 1;
-            const rA = 16.5 * Math.max(0.65, a.f) + 4;
-            const rB = 16.5 * Math.max(0.65, b.f) + 4;
-            if (dist > rA + rB + 8) {
-              x1 = a.x + (dx / dist) * rA;
-              y1 = a.y + (dy / dist) * rA;
-              x2 = b.x - (dx / dist) * rB;
-              y2 = b.y - (dy / dist) * rB;
-            }
-          }
-
-          pr.el.setAttribute('x1', x1.toFixed(1));
-          pr.el.setAttribute('y1', y1.toFixed(1));
-          pr.el.setAttribute('x2', x2.toFixed(1));
-          pr.el.setAttribute('y2', y2.toFixed(1));
-
-          const depthFactor = ((a.z + b.z) / 2 + 1) / 2;
-          let op = isHot ? 0.95 : (0.07 + 0.42 * Math.max(0, depthFactor));
-          // neighbor-to-neighbor relations read at a whisper: visible, not loud
-          if (dimNeighbor) op = 0.12 + 0.14 * depthFactor;
-          if (pr.cross && !isHot && !dimNeighbor) op *= 0.85;
-          if (hasSearch && !isHot) op *= 0.25;
-          pr.el.style.opacity = (op * edgeAlpha).toFixed(3);
-
-          const totalFks = pr.out.length + pr.inn.length;
-          pr.el.setAttribute('stroke-width', isHot ? (totalFks > 1 ? 3.6 : 2.8) : (totalFks > 1 ? 2.2 : 1.15));
-
-          if (isHot) {
-            const mEnd = pr.cross ? 'url(#fkACross)' : 'url(#fkA)';
-            const mStart = pr.cross ? 'url(#fkRCross)' : 'url(#fkR)';
-            if (pr.out.length) pr.el.setAttribute('marker-end', mEnd);
-            else pr.el.removeAttribute('marker-end');
-            if (pr.inn.length) pr.el.setAttribute('marker-start', mStart);
-            else pr.el.removeAttribute('marker-start');
-
-            // Position edge labels cleanly toward the outer node (avoiding hub clutter)
-            const hubIsT = (selectedKey === pr.t.key);
-            const fromP = hubIsT ? b : a;
-            const toP = hubIsT ? a : b;
-
-            ensurePairLabels(pr);
-            if (pr.out.length && pr.inn.length && pr.labelInnEl) {
-              placeEdgeLabel(pr.labelOutEl, fromP, toP, 0.56, pr.out.join(' · '), edgeAlpha);
-              placeEdgeLabel(pr.labelInnEl, fromP, toP, 0.74, pr.inn.join(' · '), edgeAlpha);
-            } else {
-              const cols = pr.out.length ? pr.out : pr.inn;
-              placeEdgeLabel(pr.labelOutEl, fromP, toP, 0.64, cols.join(' · '), edgeAlpha);
-              if (pr.labelInnEl) pr.labelInnEl.setAttribute('display', 'none');
-            }
-          } else {
-            pr.el.removeAttribute('marker-end');
-            pr.el.removeAttribute('marker-start');
-            if (pr.labelOutEl) pr.labelOutEl.setAttribute('display', 'none');
-            if (pr.labelInnEl) pr.labelInnEl.setAttribute('display', 'none');
-          }
-        }
-      }
-
-      // 2. Depth-sort nodes (back to front) & update transforms in place
-      projected.sort((u, v) => u.p.z - v.p.z);
-
-      let zSig = '';
-      for (let i = 0; i < projected.length; i++) {
-        const { n, p } = projected[i];
-        zSig += n.key + ';';
-
-        const visibleNode = isSourceVisible(n.source) && n.alpha > 0.02;
-        if (!visibleNode) {
-          n.el.setAttribute('display', 'none');
-          continue;
-        }
-        n.el.removeAttribute('display');
-
-        const isSel = (selectedKey === n.key);
-        const isMatch = hasSearch && matchTable(n, searchQuery);
-        const radius = (isSel ? 17.5 : 14.5) * Math.max(0.58, p.f);
-
-        n.el.classList.toggle('sel', isSel);
-        n.el.classList.toggle('match', isMatch);
-
-        n.coreEl.setAttribute('cx', p.x.toFixed(1));
-        n.coreEl.setAttribute('cy', p.y.toFixed(1));
-        n.coreEl.setAttribute('r', radius.toFixed(1));
-
-        n.haloEl.setAttribute('cx', p.x.toFixed(1));
-        n.haloEl.setAttribute('cy', p.y.toFixed(1));
-        n.haloEl.setAttribute('r', (radius + (isSel ? 9 : 6)).toFixed(1));
-
-        n.shineEl.setAttribute('cx', (p.x - radius * 0.3).toFixed(1));
-        n.shineEl.setAttribute('cy', (p.y - radius * 0.32).toFixed(1));
-        n.shineEl.setAttribute('r', (radius * 0.32).toFixed(1));
-
-        n.labelEl.setAttribute('x', p.x.toFixed(1));
-        n.labelEl.setAttribute('y', (p.y - radius - 8).toFixed(1));
-
-        // Opacity reflects 3D depth, search filter, and focus transition
-        let baseOp = selectedKey ? 1 : (0.34 + 0.66 * Math.max(0, (p.z + 1) / 2));
-        if (hasSearch && !isMatch && !isSel) baseOp *= 0.18;
-        n.el.style.opacity = (baseOp * n.alpha).toFixed(3);
-
-        // Label visibility: front hemisphere, or All, or hovered, or selected, or search match
-        const showLbl = showAllLabels || Boolean(selectedKey) || n.hovered || isSel || isMatch || p.z > FRONT_Z;
-        n.labelEl.style.opacity = showLbl ? '1' : '0';
-      }
-
-      // Only touch DOM child ordering when Z-order actually changed
-      if (zSig !== lastZOrderSig) {
-        lastZOrderSig = zSig;
-        for (let i = 0; i < projected.length; i++) {
-          layerNodes.appendChild(projected[i].n.el);
-        }
-      }
+      if (mode === 'cards') return;
+      drawBackground();
+      if (mode === 'galaxy') renderGalaxy();
+      else renderTableNetwork();
     }
 
-    function placeEdgeLabel(el, fromP, toP, frac, text, alpha) {
-      el.removeAttribute('display');
-      el.setAttribute('x', (fromP.x + (toP.x - fromP.x) * frac).toFixed(1));
-      el.setAttribute('y', (fromP.y + (toP.y - fromP.y) * frac - 7).toFixed(1));
-      el.textContent = text;
-      el.style.opacity = alpha.toFixed(3);
-    }
-
-    // Master 60fps animation loop (handles lerp transitions & gentle auto-spin)
+    /* Master Animation Loop — only redraws when needed (0% idle CPU when spin is off!) */
     function tick(now) {
       const dt = Math.min(50, now - lastFrameTime);
       lastFrameTime = now;
-      let dirty = false;
 
       if (anim) {
         const t = Math.min(1, (now - anim.startTime) / anim.duration);
         const e = easeOutCubic(t);
 
-        for (let i = 0; i < nodes.length; i++) {
-          const n = nodes[i];
-          n.cur.x = n.start.x + (n.tgt.x - n.start.x) * e;
-          n.cur.y = n.start.y + (n.tgt.y - n.start.y) * e;
-          n.cur.z = n.start.z + (n.tgt.z - n.start.z) * e;
-          n.alpha = n.startAlpha + (n.tgtAlpha - n.startAlpha) * e;
+        if (mode === 'graph') {
+          for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i];
+            n.cur.x = n.start.x + (n.tgt.x - n.start.x) * e;
+            n.cur.y = n.start.y + (n.tgt.y - n.start.y) * e;
+            n.cur.z = n.start.z + (n.tgt.z - n.start.z) * e;
+            n.alpha = n.startAlpha + (n.tgtAlpha - n.startAlpha) * e;
+          }
         }
 
         rot.rx = anim.startRot.rx + (anim.targetRot.rx - anim.startRot.rx) * e;
@@ -2601,63 +2675,89 @@ CREATE TABLE projects (
         pan.x = anim.startPan.x + (anim.targetPan.x - anim.startPan.x) * e;
         pan.y = anim.startPan.y + (anim.targetPan.y - anim.startPan.y) * e;
 
-        updateViewBox();
-        dirty = true;
+        needsRender = true;
         if (t >= 1) anim = null;
-      } else if (autoSpin && !selectedKey && !dragState && mode === 'graph') {
+      } else if (autoSpin && !selectedKey && !dragState && mode !== 'cards') {
         rot.ry += dt * 0.00028;
-        dirty = true;
+        needsRender = true;
       }
 
-      if (dirty) renderFrame();
+      if (needsRender && mode !== 'cards') {
+        renderFrame();
+        needsRender = false;
+        fpsFrames++;
+      }
+
+      if (now - fpsLastTime >= 750) {
+        currentFps = Math.round((fpsFrames * 1000) / (now - fpsLastTime));
+        fpsFrames = 0;
+        fpsLastTime = now;
+        const visLabel = mode === 'galaxy'
+          ? `${galaxyNodes.filter(g => isSourceVisible(g.source)).length} DB orbs`
+          : `${lastProjectedItems.length.toLocaleString()} tables`;
+        perfPillEl.innerHTML = `Canvas 2D · ${visLabel} · <b>${Math.max(1, currentFps || 60)} fps</b>`;
+      }
+
       requestAnimationFrame(tick);
     }
 
     /* =====================================================================
-       7. SELECTION, SUNFLOWER FOCUS & INSPECTOR DRAWER
+       7. SELECTION, DB DRILL-DOWN & TABLE INSPECTOR
        ===================================================================== */
+    function drillIntoDatabase(source) {
+      soloSource = source;
+      disabledSources = new Set(sources.filter(s => s !== source));
+      selectedKey = null;
+      hoveredItem = null;
+      hideHoverTip();
+      detailEl.classList.remove('open');
+
+      mode = 'graph';
+      syncModeUI();
+      buildLegend();
+      buildSide(searchQuery);
+      recomputeVisibleSpherePositions();
+      updateStageHud();
+
+      startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 380);
+      toast(`Drilled into ${srcLabel(source)} (${sourceTableMap[source].length} tables)`);
+    }
+
     function selectTable(key) {
       const t = byKey[key];
       if (!t) return;
 
-      // Ensure source is visible if user jumped to a hidden DB
       if (disabledSources.has(t.source)) {
         disabledSources.delete(t.source);
         soloSource = null;
         buildLegend();
         buildSide(searchQuery);
-        buildCards(searchQuery);
+        recomputeVisibleSpherePositions();
       }
 
-      // If user clicked an ER card, switch to 3D Network Focus view smoothly
-      if (mode === 'cards') {
-        setMode('graph', true);
+      if (mode !== 'graph') {
+        mode = 'graph';
+        syncModeUI();
       }
 
       selectedKey = key;
+      hoveredItem = null;
+      hideHoverTip();
       toast('Focused: ' + t.name + ' (' + srcLabel(t.source) + ')');
 
-      // Highlight in sidebar & cards
-      document.querySelectorAll('.titem').forEach(el => el.classList.toggle('sel', el.dataset.key === key));
-      document.querySelectorAll('.card').forEach(el => el.classList.toggle('sel', el.dataset.key === key));
-
-      const sit = sideItem[key];
-      if (sit) {
-        sit.det.open = true;
-        if (sit.el.scrollIntoView) sit.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      document.querySelectorAll('.titem.sel, .card.sel').forEach(el => el.classList.remove('sel'));
+      const activeItem = sideListEl.querySelector(`.titem[data-key="${CSS.escape(key)}"]`);
+      if (activeItem) {
+        activeItem.classList.add('sel');
+        if (activeItem.scrollIntoView) activeItem.scrollIntoView({ block: 'nearest' });
       }
 
-      // Populate Inspector Drawer
       renderInspector(t);
       detailEl.classList.add('open');
+      updateStageHud();
 
-      // Update Focus HUD pill
-      focusHudTxt.textContent = 'Focus: ' + t.name;
-      focusHudEl.classList.add('visible');
-
-      // Wait one frame for drawer resize width if just opened, then animate focus layout
       requestAnimationFrame(() => {
-        updateViewBox();
+        resizeCanvas();
         computeFocusTargets(key);
       });
     }
@@ -2672,12 +2772,8 @@ CREATE TABLE projects (
       srcc.querySelector('.sdot').style.background = color;
       document.getElementById('tsrcc-txt').textContent = t.source;
 
-      // Gather incoming references
-      const incoming = links.filter(l => l.t.key === t.key);
-
-      // Stats chips
-      const statsEl = document.getElementById('tstats');
-      statsEl.innerHTML =
+      const incoming = incomingByKey[t.key] || [];
+      document.getElementById('tstats').innerHTML =
         `<span class="chip"><b>${t.columns.length}</b> columns</span>` +
         `<span class="chip"><b>${t.fks.length}</b> outgoing FKs</span>` +
         `<span class="chip"><b>${incoming.length}</b> referenced by</span>`;
@@ -2685,14 +2781,11 @@ CREATE TABLE projects (
       document.getElementById('col-sec-cnt').textContent = t.columns.length + ' cols';
       document.getElementById('inc-sec-cnt').textContent = incoming.length + ' refs';
 
-      // Build Columns Table
       const cb = document.getElementById('cbody');
       cb.innerHTML = '';
       t.columns.forEach((col, idx) => {
         const fk = t.fks.find(f => f.column === col);
-        // Heuristic PK badge: first column that looks like a plain id.
-        // A name ending in _id that IS a foreign key (parent_id etc.) is no PK.
-        const isPk = (idx === 0 && !fk && /^(\w+_)?id$/i.test(col));
+        const isPk = (idx === 0 && (col === 'id' || (col.endsWith('_id') && !fk)));
         const tr = document.createElement('tr');
 
         let badgeHtml = '';
@@ -2701,8 +2794,7 @@ CREATE TABLE projects (
 
         let relHtml = '<span style="color:var(--text-dim)">—</span>';
         if (fk) {
-          const tgt = byKeyLower[(t.source + '|' + fk.ref_table).toLowerCase()]
-            || byNameLower[fk.ref_table.toLowerCase()];
+          const tgt = byKeyLower[(t.source + '|' + fk.ref_table).toLowerCase()] || byNameLower[fk.ref_table.toLowerCase()];
           if (tgt) {
             const isSelf = tgt.key === t.key;
             const isCross = tgt.source !== t.source;
@@ -2724,13 +2816,13 @@ CREATE TABLE projects (
         a.addEventListener('click', () => selectTable(a.dataset.k));
       });
 
-      // Build Referenced By (Incoming) Section
       const refBody = document.getElementById('refbody');
       refBody.innerHTML = '';
       if (!incoming.length) {
         refBody.innerHTML = '<div class="empty-refs">No other tables reference this table.</div>';
       } else {
-        incoming.forEach(l => {
+        const maxRefs = 60;
+        incoming.slice(0, maxRefs).forEach(l => {
           const div = document.createElement('div');
           div.className = 'ref-item';
           const srcClr = sColor[l.s.source] || '#3b82f6';
@@ -2745,42 +2837,115 @@ CREATE TABLE projects (
           div.addEventListener('click', () => selectTable(l.s.key));
           refBody.appendChild(div);
         });
+        if (incoming.length > maxRefs) {
+          const more = document.createElement('div');
+          more.className = 'empty-refs';
+          more.textContent = `+ ${incoming.length - maxRefs} more referencing tables`;
+          refBody.appendChild(more);
+        }
       }
     }
 
-    function resetToSphere(resetFilters) {
-      selectedKey = null;
-      focusSet = new Set();
-      detailEl.classList.remove('open');
-      focusHudEl.classList.remove('visible');
-      document.querySelectorAll('.titem.sel, .card.sel').forEach(el => el.classList.remove('sel'));
+    function updateStageHud() {
+      if (selectedKey && byKey[selectedKey]) {
+        const t = byKey[selectedKey];
+        stageHudEl.style.display = 'flex';
+        stageHudEl.className = 'focus-style';
+        hudDot.style.background = '#f97316';
+        hudTxt.textContent = `Focus: ${t.name} (${srcLabel(t.source)})`;
+        hudBtn.textContent = soloSource ? `← Back to ${srcLabel(soloSource)}` : '← Exit Focus (Esc)';
+        hudBtn.onclick = () => exitFocus();
+      } else if (mode === 'galaxy') {
+        stageHudEl.style.display = 'flex';
+        stageHudEl.className = 'galaxy-style';
+        hudDot.style.background = '#a855f7';
+        hudTxt.textContent = `DB Galaxy · ${sources.length} databases — click any planet to inspect its tables`;
+        hudBtn.textContent = 'Show All Tables';
+        hudBtn.onclick = () => setMode('graph');
+      } else if (soloSource) {
+        stageHudEl.style.display = 'flex';
+        stageHudEl.className = '';
+        hudDot.style.background = sColor[soloSource] || '#3b82f6';
+        hudTxt.textContent = `SOLO DB: ${srcLabel(soloSource)} (${sourceTableMap[soloSource].length} tables)`;
+        hudBtn.textContent = sources.length > 1 ? '← Back to DB Galaxy' : 'Show All';
+        hudBtn.onclick = () => {
+          soloSource = null;
+          disabledSources = new Set();
+          buildLegend();
+          buildSide(searchQuery);
+          recomputeVisibleSpherePositions();
+          if (data.length > HUGE_TABLE_THRESHOLD && sources.length > 1) setMode('galaxy');
+          else { updateStageHud(); computeSphereTargets(); }
+        };
+      } else {
+        stageHudEl.style.display = 'none';
+      }
+    }
 
-      if (resetFilters) {
-        disabledSources = new Set();
-        soloSource = null;
-        searchQuery = '';
-        searchInput.value = '';
-        searchClear.classList.remove('visible');
-        buildLegend();
-        buildSide('');
-        buildCards('');
+    function exitFocus() {
+      selectedKey = null;
+      detailEl.classList.remove('open');
+      document.querySelectorAll('.titem.sel, .card.sel').forEach(el => el.classList.remove('sel'));
+      updateStageHud();
+      requestAnimationFrame(() => {
+        resizeCanvas();
+        computeSphereTargets();
+      });
+    }
+
+    function resetAll() {
+      selectedKey = null;
+      soloSource = null;
+      disabledSources = new Set();
+      searchQuery = '';
+      searchInput.value = '';
+      searchClear.classList.remove('visible');
+      detailEl.classList.remove('open');
+      hideHoverTip();
+
+      if (data.length > HUGE_TABLE_THRESHOLD && sources.length > 1) {
+        mode = 'galaxy';
+      } else if (mode === 'cards') {
+        mode = 'graph';
       }
 
+      syncModeUI();
+      buildLegend();
+      buildSide('');
+      recomputeVisibleSpherePositions();
+      updateStageHud();
+
       requestAnimationFrame(() => {
-        updateViewBox();
+        resizeCanvas();
         computeSphereTargets();
       });
     }
 
     /* =====================================================================
-       8. SIDEBAR, LEGEND & ER CARDS BUILDERS
+       8. LAZY SIDEBAR, LEGEND & PAGINATED ER CARDS
+       Zero startup DOM bloat even with 10,000 tables!
        ===================================================================== */
     function buildLegend() {
       const lg = document.getElementById('legend');
       lg.innerHTML = '';
 
+      if (soloSource || disabledSources.size > 0) {
+        const allChip = document.createElement('div');
+        allChip.className = 'lg';
+        allChip.style.borderColor = '#38bdf8';
+        allChip.style.color = '#e0f2fe';
+        allChip.textContent = '↺ Show All DBs';
+        allChip.onclick = () => {
+          soloSource = null;
+          disabledSources = new Set();
+          applySourceFilterUpdate();
+          toast('Showing all databases');
+        };
+        lg.appendChild(allChip);
+      }
+
       sources.forEach(s => {
-        const count = data.filter(t => t.source === s).length;
+        const count = sourceTableMap[s].length;
         const d = document.createElement('div');
         d.className = 'lg';
         if (disabledSources.has(s)) d.classList.add('off');
@@ -2790,29 +2955,22 @@ CREATE TABLE projects (
           `<span class="dot" style="background:${sColor[s]};color:${sColor[s]}"></span>` +
           `<span>${esc(srcLabel(s))}</span>` +
           `<span class="n">${count}</span>`;
-        d.title = `Source: ${s} · Click: toggle on/off · Double-click: SOLO mode`;
+        d.title = `Source: ${s} · Click: toggle · Double-click: SOLO & drill in`;
 
-        // Distinguish click vs double-click cleanly
         let clickTimer = null;
         d.addEventListener('click', () => {
-          if (clickTimer) {
-            clearTimeout(clickTimer);
-            clickTimer = null;
-            return;
-          }
+          if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; return; }
           clickTimer = setTimeout(() => {
             clickTimer = null;
             if (soloSource && soloSource !== s) {
-              soloSource = null;
-              disabledSources = new Set();
-              toast('Showing all databases');
-            } else {
-              if (disabledSources.has(s)) disabledSources.delete(s);
-              else disabledSources.add(s);
-              toast((disabledSources.has(s) ? 'Hidden: ' : 'Visible: ') + srcLabel(s));
+              drillIntoDatabase(s);
+              return;
             }
+            if (disabledSources.has(s)) disabledSources.delete(s);
+            else disabledSources.add(s);
+            toast((disabledSources.has(s) ? 'Hidden: ' : 'Visible: ') + srcLabel(s));
             applySourceFilterUpdate();
-          }, 190);
+          }, 185);
         });
 
         d.addEventListener('dblclick', (e) => {
@@ -2822,12 +2980,10 @@ CREATE TABLE projects (
             soloSource = null;
             disabledSources = new Set();
             toast('Showing all databases');
+            applySourceFilterUpdate();
           } else {
-            soloSource = s;
-            disabledSources = new Set(sources.filter(x => x !== s));
-            toast('SOLO database: ' + srcLabel(s));
+            drillIntoDatabase(s);
           }
-          applySourceFilterUpdate();
         });
 
         lg.appendChild(d);
@@ -2837,58 +2993,91 @@ CREATE TABLE projects (
         const c = document.createElement('div');
         c.className = 'chip';
         c.innerHTML =
-          `<svg width="24" height="8" style="vertical-align:middle"><line x1="1" y1="4" x2="23" y2="4" stroke="#fbbf24" stroke-width="2" stroke-dasharray="5 4"/></svg>` +
-          `<span>dashed amber = fk across databases</span>`;
+          `<svg width="22" height="8" style="vertical-align:middle"><line x1="1" y1="4" x2="21" y2="4" stroke="#fbbf24" stroke-width="2" stroke-dasharray="5 4"/></svg>` +
+          `<span>fk across databases</span>`;
         lg.appendChild(c);
       }
 
       const hint = document.createElement('span');
       hint.className = 'legend-hint';
-      hint.textContent = 'Click = toggle DB · 2×Click = SOLO';
+      hint.textContent = 'Click = toggle · 2×Click = SOLO DB';
       lg.appendChild(hint);
 
-      // Update top bar stats chip
       document.getElementById('cnt').innerHTML =
-        `<b>${data.length}</b> tables · <b>${links.length}</b> relations · <b>${sources.length}</b> db${sources.length === 1 ? '' : 's'}`;
+        `<b>${data.length.toLocaleString()}</b> tables · <b>${links.length.toLocaleString()}</b> relations · <b>${sources.length}</b> db${sources.length === 1 ? '' : 's'}`;
     }
 
     function applySourceFilterUpdate() {
       buildLegend();
       buildSide(searchQuery);
-      buildCards(searchQuery);
+      recomputeVisibleSpherePositions();
+      updateStageHud();
+      if (mode === 'cards') buildCards(searchQuery);
+
       if (selectedKey && disabledSources.has(byKey[selectedKey].source)) {
-        resetToSphere(false);
+        exitFocus();
       } else if (selectedKey) {
         computeFocusTargets(selectedKey);
       } else {
-        nodes.forEach(n => {
-          n.tgtAlpha = isSourceVisible(n.source) ? 1 : 0;
-          n.alpha = n.tgtAlpha;
+        needsRender = true;
+      }
+    }
+
+    /* LAZY SIDEBAR: Only builds table items inside a <details> when expanded! */
+    function populateSideGroup(container, list, offset) {
+      const slice = list.slice(offset, offset + SIDE_CHUNK_SIZE);
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < slice.length; i++) {
+        const t = slice[i];
+        const k = t.key;
+        const item = document.createElement('div');
+        item.className = 'titem' + (selectedKey === k ? ' sel' : '');
+        item.dataset.key = k;
+        item.innerHTML =
+          `<span class="tname-txt">${esc(t.name)}</span>` +
+          `<span class="nfk">${t.fks.length} fk</span>`;
+        item.addEventListener('click', () => {
+          selectTable(k);
+          if (window.innerWidth <= 960) sideEl.classList.add('closed');
         });
-        renderFrame();
+        frag.appendChild(item);
+      }
+      container.appendChild(frag);
+
+      const nextOffset = offset + slice.length;
+      if (nextOffset < list.length) {
+        const moreBtn = document.createElement('button');
+        moreBtn.className = 'side-more-btn';
+        moreBtn.textContent = `Show more (${list.length - nextOffset} remaining)`;
+        moreBtn.onclick = () => {
+          moreBtn.remove();
+          populateSideGroup(container, list, nextOffset);
+        };
+        container.appendChild(moreBtn);
       }
     }
 
     function buildSide(q) {
       q = (q || '').trim().toLowerCase();
       sideListEl.innerHTML = '';
-      sideItem = {};
 
-      const visibleSources = sources.filter(s => isSourceVisible(s));
-      sideCntEl.textContent = `${visibleSources.length} / ${sources.length} dbs`;
+      const visSources = sources.filter(s => isSourceVisible(s));
+      sideCntEl.textContent = `${visSources.length} / ${sources.length} dbs`;
 
-      const startOpen = sources.length <= 5 || q.length > 0;
+      // Start collapsed whenever there are > 4 DBs (keeps startup DOM under 100 nodes!)
+      const startOpen = (visSources.length <= 4 && data.length <= 300) || q.length > 0;
       const dets = [];
+      const frag = document.createDocumentFragment();
 
-      sources.forEach(s => {
-        if (!isSourceVisible(s)) return;
-        const allInSrc = data.filter(t => t.source === s);
-        const filtered = allInSrc.filter(t => matchTable(t, q));
-        if (q && !filtered.length) return;
+      for (let i = 0; i < visSources.length; i++) {
+        const s = visSources[i];
+        const allNodesInSrc = nodes.filter(n => n.source === s);
+        const filtered = q ? allNodesInSrc.filter(n => matchTable(n, q)) : allNodesInSrc;
+        if (q && !filtered.length) continue;
 
         const det = document.createElement('details');
         det.className = 'src';
-        det.open = startOpen;
+        det.open = startOpen && dets.length < 15; // Cap auto-open groups during broad searches
 
         const sum = document.createElement('summary');
         sum.title = 'Source: ' + s;
@@ -2896,60 +3085,85 @@ CREATE TABLE projects (
           `<span class="caret">▶</span>` +
           `<span class="dot" style="background:${sColor[s]}"></span>` +
           `<span class="sname">${esc(srcLabel(s))}</span>` +
-          `<span class="cnt">${filtered.length}${filtered.length !== allInSrc.length ? '/' + allInSrc.length : ''}</span>`;
+          `<span class="cnt">${filtered.length}${filtered.length !== allNodesInSrc.length ? '/' + allNodesInSrc.length : ''}</span>`;
+
+        const soloBtn = document.createElement('button');
+        soloBtn.className = 'solo-mini';
+        soloBtn.textContent = '3D';
+        soloBtn.title = 'Drill into this database in 3D';
+        soloBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          drillIntoDatabase(s);
+          if (window.innerWidth <= 960) sideEl.classList.add('closed');
+        });
+        sum.appendChild(soloBtn);
         det.appendChild(sum);
 
-        filtered.forEach(t => {
-          const k = keyOf(t);
-          const item = document.createElement('div');
-          item.className = 'titem' + (selectedKey === k ? ' sel' : '');
-          item.dataset.key = k;
-          item.innerHTML =
-            `<span class="tname-txt">${esc(t.name)}</span>` +
-            `<span class="nfk">${t.fks.length} fk</span>`;
-          item.addEventListener('click', () => {
-            selectTable(k);
-            // Auto-close sidebar drawer on mobile after picking a table
-            if (window.innerWidth <= 960) sideEl.classList.add('closed');
-          });
-          det.appendChild(item);
-          sideItem[k] = { el: item, det: det };
+        const bodyDiv = document.createElement('div');
+        det.appendChild(bodyDiv);
+
+        let rendered = false;
+        const ensureRendered = () => {
+          if (rendered) return;
+          rendered = true;
+          populateSideGroup(bodyDiv, filtered, 0);
+        };
+
+        if (det.open) ensureRendered();
+        det.addEventListener('toggle', () => {
+          if (det.open) ensureRendered();
         });
 
         dets.push(det);
-        sideListEl.appendChild(det);
-      });
+        frag.appendChild(det);
+      }
 
       if (!dets.length) {
         sideListEl.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text-dim);font-size:12.5px">No matching tables found.</div>';
+      } else {
+        sideListEl.appendChild(frag);
       }
 
       foldBtn.textContent = startOpen ? 'Close All' : 'Open All';
       foldBtn.onclick = () => {
         const anyOpen = dets.some(d => d.open);
-        dets.forEach(d => { d.open = !anyOpen; });
+        dets.slice(0, anyOpen ? dets.length : 15).forEach(d => { d.open = !anyOpen; });
+        if (!anyOpen && dets.length > 15) {
+          toast('Opened first 15 database groups for fast performance');
+        }
         foldBtn.textContent = anyOpen ? 'Open All' : 'Close All';
       };
     }
 
+    /* LAZY & PAGINATED ER CARDS: Builds 60 cards per page only when Cards tab is open */
     function buildCards(q) {
       q = (q || '').trim().toLowerCase();
       cardsEl.innerHTML = '';
+      cardsPagerEl.innerHTML = '';
+      cardsFilteredList = nodes.filter(n => isSourceVisible(n.source) && matchTable(n, q));
+      cardsRenderedCount = 0;
 
-      const list = data.filter(t => isSourceVisible(t.source) && matchTable(t, q));
-      if (!list.length) {
+      if (!cardsFilteredList.length) {
         cardsEl.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text-dim)">No tables match the current filter.</div>';
         return;
       }
+      appendNextCardPage();
+    }
 
-      list.forEach(t => {
-        const k = keyOf(t);
+    function appendNextCardPage() {
+      const slice = cardsFilteredList.slice(cardsRenderedCount, cardsRenderedCount + CARDS_PAGE_SIZE);
+      const frag = document.createDocumentFragment();
+
+      for (let i = 0; i < slice.length; i++) {
+        const t = slice[i];
+        const k = t.key;
         const card = document.createElement('div');
         card.className = 'card' + (selectedKey === k ? ' sel' : '');
         card.dataset.key = k;
-        card.style.setProperty('--sc', sColor[t.source] || '#3b82f6');
+        card.style.setProperty('--sc', t.color);
 
-        const maxCols = 9;
+        const maxCols = 8;
         let colsHtml = t.columns.slice(0, maxCols).map((col, idx) => {
           const fk = t.fks.find(f => f.column === col);
           const isPk = (idx === 0 && col === 'id');
@@ -2967,24 +3181,88 @@ CREATE TABLE projects (
             `<h3>${esc(t.name)}</h3>` +
             `<span class="chip" style="padding:2px 7px;font-size:10.5px">${t.fks.length} FK</span>` +
           `</div>` +
-          `<div class="card-src"><span class="dot" style="background:${sColor[t.source]}"></span>${esc(srcLabel(t.source))}</div>` +
+          `<div class="card-src"><span class="dot" style="background:${t.color}"></span>${esc(srcLabel(t.source))}</div>` +
           `<div class="card-cols">${colsHtml}</div>`;
 
         card.addEventListener('click', () => selectTable(k));
-        cardsEl.appendChild(card);
-      });
+        frag.appendChild(card);
+      }
+
+      cardsEl.appendChild(frag);
+      cardsRenderedCount += slice.length;
+
+      cardsPagerEl.innerHTML = '';
+      if (cardsRenderedCount < cardsFilteredList.length) {
+        const rem = cardsFilteredList.length - cardsRenderedCount;
+        const btn = document.createElement('button');
+        btn.className = 'btn active';
+        btn.textContent = `Load ${Math.min(CARDS_PAGE_SIZE, rem)} more cards (showing ${cardsRenderedCount.toLocaleString()} of ${cardsFilteredList.length.toLocaleString()})`;
+        btn.onclick = appendNextCardPage;
+        cardsPagerEl.appendChild(btn);
+      }
     }
 
     /* =====================================================================
-       9. MOUSE, TOUCH, WHEEL & KEYBOARD INTERACTION
+       9. FAST SCREEN-SPACE HIT TESTING, MOUSE, TOUCH & WHEEL CONTROLS
        ===================================================================== */
     let dragState = null;
     let dragMoved = 0;
     let pinchState = null;
 
-    svg.addEventListener('mousedown', (e) => {
+    function hitTestCanvas(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = clientX - rect.left;
+      const my = clientY - rect.top;
+
+      // Traverse front-to-back (lastProjectedItems is sorted back-to-front)
+      for (let i = lastProjectedItems.length - 1; i >= 0; i--) {
+        const it = lastProjectedItems[i];
+        const hitR = Math.max(8, it.r + 4);
+        const dx = mx - it.sx;
+        const dy = my - it.sy;
+        if (dx * dx + dy * dy <= hitR * hitR) {
+          return { item: it, mx: mx, my: my };
+        }
+      }
+      return null;
+    }
+
+    function showHoverTip(hit) {
+      const it = hit.item;
+      const obj = it.node;
+      hoverTipEl.style.display = 'block';
+
+      if (obj.kind === 'db') {
+        hoverTipEl.innerHTML =
+          `<div class="ht-title"><span class="ht-dot" style="background:${obj.color}"></span>${esc(obj.label)}</div>` +
+          `<div class="ht-meta">${obj.tableCount.toLocaleString()} tables · ${obj.intraFks.toLocaleString()} internal FKs · ${obj.crossFks.toLocaleString()} cross-DB</div>` +
+          `<div class="ht-meta" style="color:#93c5fd;margin-top:2px">Click to drill into this database</div>`;
+      } else {
+        const incCnt = (incomingByKey[obj.key] || []).length;
+        hoverTipEl.innerHTML =
+          `<div class="ht-title"><span class="ht-dot" style="background:${obj.color}"></span>${esc(obj.name)}</div>` +
+          `<div class="ht-meta">${esc(srcLabel(obj.source))} · ${obj.columns.length} cols · ${obj.fks.length} out · ${incCnt} in</div>`;
+      }
+
+      const tipW = hoverTipEl.offsetWidth || 200;
+      const tipH = hoverTipEl.offsetHeight || 54;
+      let tx = hit.mx + 16;
+      let ty = hit.my - tipH * 0.5;
+      if (tx + tipW > cw - 12) tx = hit.mx - tipW - 16;
+      if (ty < 10) ty = 10;
+      if (ty + tipH > ch - 10) ty = ch - tipH - 10;
+
+      hoverTipEl.style.left = tx + 'px';
+      hoverTipEl.style.top = ty + 'px';
+    }
+
+    function hideHoverTip() {
+      hoverTipEl.style.display = 'none';
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
       if (e.button !== 0 && e.button !== 1) return;
-      anim = null; // Immediately hand control to user
+      anim = null;
       const doPan = tool === 'pan' || e.shiftKey || e.button === 1;
       dragMoved = 0;
       dragState = {
@@ -2996,49 +3274,86 @@ CREATE TABLE projects (
         px: pan.x,
         py: pan.y
       };
-      svg.classList.add('grabbing');
+      canvas.classList.add('grabbing');
+      hideHoverTip();
     });
 
     window.addEventListener('mousemove', (e) => {
-      if (!dragState) return;
-      const dx = e.clientX - dragState.x;
-      const dy = e.clientY - dragState.y;
-      dragMoved = Math.max(dragMoved, Math.hypot(dx, dy));
+      if (dragState) {
+        const dx = e.clientX - dragState.x;
+        const dy = e.clientY - dragState.y;
+        dragMoved = Math.max(dragMoved, Math.hypot(dx, dy));
 
-      if (dragState.pan) {
-        pan.x = dragState.px - dx / zoom;
-        pan.y = dragState.py - dy / zoom;
-        updateViewBox();
-      } else {
-        rot.ry = dragState.ry - dx * 0.0075;
-        rot.rx = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, dragState.rx + dy * 0.0075));
-        renderFrame();
+        if (dragState.pan) {
+          pan.x = dragState.px - dx / zoom;
+          pan.y = dragState.py - dy / zoom;
+        } else {
+          rot.ry = dragState.ry - dx * 0.0072;
+          rot.rx = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, dragState.rx + dy * 0.0072));
+        }
+        needsRender = true;
+        return;
       }
+
+      if (e.target !== canvas || mode === 'cards') {
+        if (hoveredItem) {
+          hoveredItem = null;
+          hideHoverTip();
+          canvas.classList.remove('pointer');
+          needsRender = true;
+        }
+        return;
+      }
+
+      const hit = hitTestCanvas(e.clientX, e.clientY);
+      const nextHover = hit ? hit.item.node : null;
+      if (nextHover !== hoveredItem) {
+        hoveredItem = nextHover;
+        canvas.classList.toggle('pointer', Boolean(nextHover));
+        needsRender = true;
+      }
+      if (hit) showHoverTip(hit);
+      else hideHoverTip();
     });
 
     window.addEventListener('mouseup', () => {
+      if (!dragState) return;
       dragState = null;
-      svg.classList.remove('grabbing');
+      canvas.classList.remove('grabbing');
+      needsRender = true; // Restore full edge LOD after drag settles
     });
 
-    // Smooth scroll-wheel zoom
-    svg.addEventListener('wheel', (e) => {
+    canvas.addEventListener('click', (e) => {
+      if (dragMoved > 5) return;
+      const hit = hitTestCanvas(e.clientX, e.clientY);
+      if (!hit) return;
+      const obj = hit.item.node;
+      if (obj.kind === 'db') drillIntoDatabase(obj.source);
+      else selectTable(obj.key);
+    });
+
+    canvas.addEventListener('dblclick', (e) => {
+      const hit = hitTestCanvas(e.clientX, e.clientY);
+      if (hit) return;
+      if (selectedKey) {
+        exitFocus();
+        toast('Returned to 3D Sphere');
+      } else {
+        startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 340);
+        toast('Centered 3D View');
+      }
+    });
+
+    canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       anim = null;
-      const factor = e.deltaY < 0 ? 1.16 : (1 / 1.16);
-      zoom = Math.max(0.35, Math.min(12, zoom * factor));
-      updateViewBox();
+      const factor = e.deltaY < 0 ? 1.15 : (1 / 1.15);
+      zoom = Math.max(0.32, Math.min(14, zoom * factor));
+      needsRender = true;
     }, { passive: false });
 
-    // Double-click empty SVG space resets to full 3D sphere
-    svg.addEventListener('dblclick', (e) => {
-      if (e.target.closest && e.target.closest('.node')) return;
-      resetToSphere(false);
-      toast('View reset to 3D Planet');
-    });
-
-    // Touch support (1-finger rotate/pan, 2-finger pinch-zoom)
-    svg.addEventListener('touchstart', (e) => {
+    // Touch support (1-finger orbit/pan + 2-finger pinch zoom + tap)
+    canvas.addEventListener('touchstart', (e) => {
       anim = null;
       if (e.touches.length === 1) {
         const t = e.touches[0];
@@ -3063,7 +3378,7 @@ CREATE TABLE projects (
       }
     }, { passive: true });
 
-    svg.addEventListener('touchmove', (e) => {
+    canvas.addEventListener('touchmove', (e) => {
       if (e.touches.length === 1 && dragState) {
         const t = e.touches[0];
         const dx = t.clientX - dragState.x;
@@ -3072,60 +3387,97 @@ CREATE TABLE projects (
         if (dragState.pan) {
           pan.x = dragState.px - dx / zoom;
           pan.y = dragState.py - dy / zoom;
-          updateViewBox();
         } else {
           rot.ry = dragState.ry - dx * 0.0085;
           rot.rx = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, dragState.rx + dy * 0.0085));
-          renderFrame();
         }
+        needsRender = true;
       } else if (e.touches.length === 2 && pinchState) {
         const d = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
-        zoom = Math.max(0.35, Math.min(12, pinchState.zoom * (d / (pinchState.dist || 1))));
-        updateViewBox();
+        zoom = Math.max(0.32, Math.min(14, pinchState.zoom * (d / (pinchState.dist || 1))));
+        needsRender = true;
       }
     }, { passive: true });
 
-    svg.addEventListener('touchend', () => {
+    canvas.addEventListener('touchend', (e) => {
+      if (dragState && dragMoved < 8 && e.changedTouches.length === 1) {
+        const t = e.changedTouches[0];
+        const hit = hitTestCanvas(t.clientX, t.clientY);
+        if (hit) {
+          if (hit.item.node.kind === 'db') drillIntoDatabase(hit.item.node.source);
+          else selectTable(hit.item.node.key);
+        }
+      }
       dragState = null;
       pinchState = null;
+      needsRender = true;
     });
 
     /* =====================================================================
-       10. TOOLBAR & FLOATING CONTROL HANDLERS
+       10. TOOLBAR & KEYBOARD CONTROLS
        ===================================================================== */
-    function setMode(m, keepSelection) {
+    function syncModeUI() {
+      document.getElementById('vGalaxy').className = 'btn' + (mode === 'galaxy' ? ' galaxy-active' : '');
+      document.getElementById('vGraph').className = 'btn' + (mode === 'graph' ? ' active' : '');
+      document.getElementById('vCards').className = 'btn' + (mode === 'cards' ? ' active' : '');
+
+      graphWrapEl.style.display = (mode === 'cards') ? 'none' : 'flex';
+      cardsWrapEl.classList.toggle('visible', mode === 'cards');
+    }
+
+    function setMode(m) {
+      if (m === 'galaxy') {
+        selectedKey = null;
+        detailEl.classList.remove('open');
+        soloSource = null;
+        disabledSources = new Set();
+        buildLegend();
+        buildSide(searchQuery);
+      }
       mode = m;
-      document.getElementById('vGraph').classList.toggle('active', m === 'graph');
-      document.getElementById('vCards').classList.toggle('active', m === 'cards');
-      graphWrapEl.style.display = (m === 'graph') ? 'flex' : 'none';
-      cardsEl.classList.toggle('visible', m === 'cards');
-      if (m === 'graph') {
+      hoveredItem = null;
+      hideHoverTip();
+      syncModeUI();
+      updateStageHud();
+
+      if (m === 'cards') {
+        buildCards(searchQuery);
+      } else {
         requestAnimationFrame(() => {
-          updateViewBox();
-          if (!keepSelection && !selectedKey) renderFrame();
+          resizeCanvas();
+          if (m === 'galaxy') {
+            startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 320);
+          } else if (!selectedKey) {
+            recomputeVisibleSpherePositions();
+            needsRender = true;
+          }
         });
       }
     }
 
-    document.getElementById('vGraph').addEventListener('click', () => setMode('graph', true));
-    document.getElementById('vCards').addEventListener('click', () => setMode('cards', true));
+    document.getElementById('vGalaxy').addEventListener('click', () => setMode('galaxy'));
+    document.getElementById('vGraph').addEventListener('click', () => setMode('graph'));
+    document.getElementById('vCards').addEventListener('click', () => setMode('cards'));
 
     document.getElementById('vEdges').addEventListener('click', (e) => {
       showEdges = !showEdges;
-      svg.classList.toggle('no-edges', !showEdges);
       e.currentTarget.classList.toggle('active', showEdges);
       e.currentTarget.classList.toggle('off', !showEdges);
       e.currentTarget.textContent = showEdges ? '🔗 Edges: On' : '🔗 Edges: Off';
+      needsRender = true;
     });
 
     document.getElementById('vLabels').addEventListener('click', (e) => {
-      showAllLabels = !showAllLabels;
-      e.currentTarget.classList.toggle('active', showAllLabels);
-      e.currentTarget.textContent = showAllLabels ? '🏷 Labels: All' : '🏷 Labels: Front';
-      renderFrame();
+      const order = ['smart', 'all', 'off'];
+      labelMode = order[(order.indexOf(labelMode) + 1) % order.length];
+      const names = { smart: '🏷 Labels: Smart', all: '🏷 Labels: Dense', off: '🏷 Labels: Off' };
+      e.currentTarget.textContent = names[labelMode];
+      e.currentTarget.classList.toggle('active', labelMode === 'all');
+      e.currentTarget.classList.toggle('off', labelMode === 'off');
+      needsRender = true;
     });
 
     document.getElementById('vSpin').addEventListener('click', (e) => {
@@ -3137,67 +3489,53 @@ CREATE TABLE projects (
 
     document.getElementById('sideToggle').addEventListener('click', () => {
       sideEl.classList.toggle('closed');
-      setTimeout(() => { updateViewBox(); renderFrame(); }, 230);
+      setTimeout(resizeCanvas, 230);
     });
 
-    // Keep the SVG viewBox in sync while panels animate (drawer / sidebar),
-    // otherwise the picture stretches during the width transition
-    detailEl.addEventListener('transitionend', (e) => {
-      if (e.propertyName === 'width') { updateViewBox(); renderFrame(); }
-    });
-    sideEl.addEventListener('transitionend', (e) => {
-      if (e.propertyName === 'margin-left') { updateViewBox(); renderFrame(); }
-    });
+    document.getElementById('closeDetail').addEventListener('click', () => exitFocus());
 
-    document.getElementById('closeDetail').addEventListener('click', () => resetToSphere(false));
-    document.getElementById('exitFocusBtn').addEventListener('click', () => resetToSphere(false));
-
-    // Floating Canvas Controls
     document.getElementById('zIn').addEventListener('click', () => {
       anim = null;
-      zoom = Math.min(12, zoom * 1.35);
-      updateViewBox();
+      zoom = Math.min(14, zoom * 1.35);
+      needsRender = true;
     });
 
     document.getElementById('zOut').addEventListener('click', () => {
       anim = null;
-      zoom = Math.max(0.35, zoom / 1.35);
-      updateViewBox();
+      zoom = Math.max(0.32, zoom / 1.35);
+      needsRender = true;
     });
 
     document.getElementById('zFit').addEventListener('click', () => {
-      if (selectedKey) {
-        computeFocusTargets(selectedKey);
-      } else {
-        const W = svg.clientWidth || 800;
-        const H = svg.clientHeight || 520;
-        const fitZoom = Math.max(0.55, Math.min(1.15, Math.min(W, H) / 760));
-        startTransition({ rx: rot.rx, ry: rot.ry }, fitZoom, { x: 0, y: 0 }, 300);
-      }
+      if (selectedKey) computeFocusTargets(selectedKey);
+      else startTransition({ rx: rot.rx, ry: rot.ry }, fitBaseZoom(), { x: 0, y: 0 }, 280);
     });
 
     document.getElementById('hand').addEventListener('click', (e) => {
       tool = (tool === 'rotate') ? 'pan' : 'rotate';
       const isPan = tool === 'pan';
-      svg.classList.toggle('pan-mode', isPan);
+      canvas.classList.toggle('pan-mode', isPan);
       e.currentTarget.classList.toggle('active-tool', isPan);
       e.currentTarget.textContent = isPan ? '✋' : '🔄';
-      e.currentTarget.title = isPan ? 'Pan mode active (click to rotate)' : 'Rotate mode active (click to pan)';
-      toast(isPan ? 'Pan tool active (drag to move)' : 'Rotate tool active (drag to orbit)');
+      toast(isPan ? 'Pan tool active' : 'Rotate tool active');
     });
 
     document.getElementById('zReset').addEventListener('click', () => {
-      resetToSphere(true);
-      toast('Reset everything to 3D Planet');
+      resetAll();
+      toast('Reset view & filters');
     });
 
-    // Live Search Input
+    // Debounced search so typing stays instant even across 10,000+ tables
     searchInput.addEventListener('input', (e) => {
-      searchQuery = e.target.value.trim().toLowerCase();
-      searchClear.classList.toggle('visible', searchQuery.length > 0);
-      buildSide(searchQuery);
-      buildCards(searchQuery);
-      renderFrame();
+      const val = e.target.value.trim().toLowerCase();
+      searchClear.classList.toggle('visible', val.length > 0);
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        searchQuery = val;
+        buildSide(searchQuery);
+        if (mode === 'cards') buildCards(searchQuery);
+        needsRender = true;
+      }, 110);
     });
 
     searchClear.addEventListener('click', () => {
@@ -3205,21 +3543,17 @@ CREATE TABLE projects (
       searchQuery = '';
       searchClear.classList.remove('visible');
       buildSide('');
-      buildCards('');
-      renderFrame();
+      if (mode === 'cards') buildCards('');
+      needsRender = true;
       searchInput.focus();
     });
 
-    // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
       const modalOpen = document.getElementById('sqlModal').classList.contains('open');
       if (e.key === 'Escape') {
-        if (modalOpen) {
-          closeSqlModal();
-        } else {
-          resetToSphere(true);
-          toast('Reset view & filters');
-        }
+        if (modalOpen) closeSqlModal();
+        else if (selectedKey) exitFocus();
+        else resetAll();
         return;
       }
       if (modalOpen) return;
@@ -3229,15 +3563,8 @@ CREATE TABLE projects (
       }
     });
 
-    window.addEventListener('resize', () => {
-      updateViewBox();
-      renderFrame();
-    });
-
     /* =====================================================================
-       11. BUILT-IN CLIENT-SIDE SQL DDL PARSER & MODAL
-       Handles -- line comments, block comments, CREATE TABLE, inline REFERENCES,
-       and table-level FOREIGN KEY (...) REFERENCES ...
+       11. LIVE SQL PARSER & 8,300-TABLE / 67-DB STRESS GENERATOR
        ===================================================================== */
     const sqlModal = document.getElementById('sqlModal');
     const sqlInput = document.getElementById('sqlInput');
@@ -3245,15 +3572,10 @@ CREATE TABLE projects (
     const sqlMsg = document.getElementById('sqlMsg');
 
     function stripSqlComments(sql) {
-      // Remove /* ... */ block comments and -- line comments while keeping quoted strings safe
-      let out = '';
-      let i = 0;
-      const len = sql.length;
-      let inSingle = false, inDouble = false;
+      let out = '', i = 0, len = sql.length, inS = false, inD = false;
       while (i < len) {
-        const ch = sql[i];
-        const next = sql[i + 1];
-        if (!inSingle && !inDouble) {
+        const ch = sql[i], next = sql[i + 1];
+        if (!inS && !inD) {
           if (ch === '-' && next === '-') {
             while (i < len && sql[i] !== '\n') i++;
             continue;
@@ -3265,8 +3587,8 @@ CREATE TABLE projects (
             continue;
           }
         }
-        if (ch === "'" && !inDouble) inSingle = !inSingle;
-        else if (ch === '"' && !inSingle) inDouble = !inDouble;
+        if (ch === "'" && !inD) inS = !inS;
+        else if (ch === '"' && !inS) inD = !inD;
         out += ch;
         i++;
       }
@@ -3283,11 +3605,7 @@ CREATE TABLE projects (
         if (!inS && !inD) {
           if (ch === '(') depth++;
           else if (ch === ')') depth = Math.max(0, depth - 1);
-          if (ch === ',' && depth === 0) {
-            parts.push(cur);
-            cur = '';
-            continue;
-          }
+          if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; continue; }
         }
         cur += ch;
       }
@@ -3316,49 +3634,74 @@ CREATE TABLE projects (
           else if (ch === '"' && !inS) inD = !inD;
           if (!inS && !inD) {
             if (ch === '(') depth++;
-            else if (ch === ')') {
-              depth--;
-              if (depth === 0) { endIdx = i; break; }
-            }
+            else if (ch === ')') { depth--; if (depth === 0) { endIdx = i; break; } }
           }
         }
         if (endIdx === -1) continue;
 
         const body = text.slice(openIdx + 1, endIdx);
-        const columns = [];
-        const fks = [];
-
+        const columns = [], fks = [];
         splitTopLevelCommas(body).forEach(rawPart => {
           const part = rawPart.trim();
           if (!part) return;
-
           const fkMatch = FK_RE.exec(part);
-          if (fkMatch) {
-            fks.push({ column: fkMatch[1], ref_table: fkMatch[2] });
-            return;
-          }
+          if (fkMatch) { fks.push({ column: fkMatch[1], ref_table: fkMatch[2] }); return; }
           if (CONSTRAINT_STARTS.test(part)) return;
-
           const inlineFk = INLINE_FK_RE.exec(part);
-          if (inlineFk) {
-            fks.push({ column: inlineFk[1], ref_table: inlineFk[2] });
-          }
-
+          if (inlineFk) fks.push({ column: inlineFk[1], ref_table: inlineFk[2] });
           const colToken = part.split(/\s+/)[0].replace(/^["'`\[]|["'`\]]$/g, '');
-          if (colToken && columns.indexOf(colToken) < 0) {
-            columns.push(colToken);
-          }
+          if (colToken && columns.indexOf(colToken) < 0) columns.push(colToken);
         });
 
-        parsed.push({
-          name: tableName,
-          source: sourceName || 'custom_schema.sql',
-          columns: columns,
-          fks: fks
-        });
+        parsed.push({ name: tableName, source: sourceName || 'custom_schema.sql', columns: columns, fks: fks });
         CREATE_RE.lastIndex = endIdx + 1;
       }
       return parsed;
+    }
+
+    /* Generate a realistic 67-DB / ~8,300-table / ~22,000-FK corpus to verify 60fps Canvas performance */
+    function generate8kCorpus() {
+      const prefixes = ['auth', 'pos', 'accounting', 'inventory', 'hr', 'crm', 'billing', 'saas', 'audit', 'warehouse', 'tax', 'payroll'];
+      const nouns = ['orders', 'lines', 'entries', 'items', 'accounts', 'invoices', 'payments', 'users', 'sessions', 'logs', 'rules', 'batches', 'moves', 'tickets', 'quotes'];
+      const out = [];
+      const dbCount = 67;
+      for (let d = 0; d < dbCount; d++) {
+        const isSmall = d >= 52;
+        const dbName = isSmall
+          ? `00${d - 40}_migration_${prefixes[d % prefixes.length]}.py`
+          : (d % 4 === 0 ? `company_${d + 1}.sqlite3` : (d % 4 === 1 ? `default_${d + 1}.sqlite3` : `service_${d + 1}.sql`));
+        const tCount = isSmall ? (4 + (d % 8)) : (145 + (d % 35));
+        const namesInDb = [];
+        for (let t = 0; t < tCount; t++) {
+          const tName = `${prefixes[t % prefixes.length]}_${nouns[Math.floor(t / prefixes.length) % nouns.length]}_${t}`;
+          namesInDb.push(tName);
+        }
+        for (let t = 0; t < tCount; t++) {
+          const cols = ['id', 'tenant_id', 'code', 'status', 'created_at'];
+          const fks = [];
+          if (t > 0) {
+            const ref1 = namesInDb[(t - 1) % t];
+            cols.push('parent_ref_id');
+            fks.push({ column: 'parent_ref_id', ref_table: ref1 });
+          }
+          if (t > 2) {
+            const ref2 = namesInDb[(t * 7) % t];
+            cols.push('owner_ref_id');
+            fks.push({ column: 'owner_ref_id', ref_table: ref2 });
+          }
+          if (t % 3 === 0 && t > 4) {
+            const ref3 = namesInDb[(t * 13) % t];
+            cols.push('ledger_ref_id');
+            fks.push({ column: 'ledger_ref_id', ref_table: ref3 });
+          }
+          if (d > 0 && t === 0) {
+            cols.push('core_tenant_id');
+            fks.push({ column: 'core_tenant_id', ref_table: 'auth_orders_0' });
+          }
+          out.push({ name: namesInDb[t], source: dbName, columns: cols, fks: fks });
+        }
+      }
+      return out;
     }
 
     function openSqlModal() {
@@ -3374,61 +3717,62 @@ CREATE TABLE projects (
 
     function applySqlImport(replaceAll) {
       const raw = sqlInput.value.trim();
-      const srcName = (sqlSourceInput.value.trim() || 'custom_schema.sql');
+      const srcName = sqlSourceInput.value.trim() || 'custom_schema.sql';
       if (!raw) {
         sqlMsg.className = 'modal-msg err';
-        sqlMsg.textContent = 'Please paste at least one CREATE TABLE SQL statement.';
+        sqlMsg.textContent = 'Please paste at least one CREATE TABLE statement.';
         return;
       }
-
       const extracted = parseSqlDDL(raw, srcName);
       if (!extracted.length) {
         sqlMsg.className = 'modal-msg err';
-        sqlMsg.textContent = 'No valid CREATE TABLE definitions found. Check your SQL syntax.';
+        sqlMsg.textContent = 'No valid CREATE TABLE definitions found.';
         return;
       }
-
       if (replaceAll) {
         data = extracted;
       } else {
-        // Merge by (source, name) replacing duplicates if same source+name
         const map = new Map();
         data.forEach(t => map.set(keyOf(t), t));
         extracted.forEach(t => map.set(keyOf(t), t));
         data = Array.from(map.values());
       }
-
       selectedKey = null;
-      focusSet = new Set();
-      disabledSources = new Set();
       soloSource = null;
+      disabledSources = new Set();
       detailEl.classList.remove('open');
-      focusHudEl.classList.remove('visible');
-
-      rebuildDataset();
-      computeSphereTargets();
+      rebuildDataset(true);
       closeSqlModal();
-      toast(`Parsed ${extracted.length} table${extracted.length === 1 ? '' : 's'} from ${srcName}`);
+      toast(`Parsed ${extracted.length} tables from ${srcName}`);
     }
 
     document.getElementById('openSqlBtn').addEventListener('click', openSqlModal);
     document.getElementById('closeSqlBtn').addEventListener('click', closeSqlModal);
     sqlModal.addEventListener('click', (e) => { if (e.target === sqlModal) closeSqlModal(); });
-
     document.getElementById('sqlAddBtn').addEventListener('click', () => applySqlImport(false));
     document.getElementById('sqlReplaceBtn').addEventListener('click', () => applySqlImport(true));
 
+    document.getElementById('bench8kBtn').addEventListener('click', () => {
+      selectedKey = null;
+      soloSource = null;
+      disabledSources = new Set();
+      detailEl.classList.remove('open');
+      data = generate8kCorpus();
+      rebuildDataset(true);
+      closeSqlModal();
+      startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 380);
+    });
+
     document.getElementById('loadSampleSqlBtn').addEventListener('click', () => {
       sqlSourceInput.value = 'hr_payroll.sql';
-      sqlInput.value = `-- HR & Payroll Extension (connects to core_auth & accounting_ledger)
+      sqlInput.value = `-- HR & Payroll Extension
 CREATE TABLE departments (
   id SERIAL PRIMARY KEY,
-  parent_id INT REFERENCES departments(id), -- self-referencing hierarchy
+  parent_id INT REFERENCES departments(id),
   cost_center_id INT REFERENCES cost_centers(id),
   name VARCHAR(120) NOT NULL
 );
 
-/* Employee records linked to users and departments */
 CREATE TABLE employees (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(id),
@@ -3438,43 +3782,29 @@ CREATE TABLE employees (
   base_salary NUMERIC(12,2)
 );
 
-CREATE TABLE payroll_runs (
-  id SERIAL PRIMARY KEY,
-  fiscal_year_id INT,
-  approved_by INT,
-  journal_entry_id INT,
-  period_label VARCHAR(20),
-  FOREIGN KEY (fiscal_year_id) REFERENCES fiscal_years(id),
-  FOREIGN KEY (approved_by) REFERENCES users(id),
-  FOREIGN KEY (journal_entry_id) REFERENCES journal_entries(id)
-);
-
 CREATE TABLE payslips (
   id SERIAL PRIMARY KEY,
-  payroll_run_id INT NOT NULL REFERENCES payroll_runs(id),
   employee_id INT NOT NULL REFERENCES employees(id),
-  gross_pay NUMERIC(12,2),
+  journal_entry_id INT REFERENCES journal_entries(id),
   net_pay NUMERIC(12,2)
 );`;
       sqlMsg.className = 'modal-msg ok';
-      sqlMsg.textContent = 'Sample HR & Payroll SQL loaded — click "Add to Current Schema" to see cross-DB links!';
+      sqlMsg.textContent = 'Sample SQL loaded — click "Add to Current".';
     });
 
     document.getElementById('restoreDefaultBtn').addEventListener('click', () => {
-      const restoringProject = Boolean(INITIAL_DATA && INITIAL_DATA.length);
-      data = restoringProject ? cloneData(INITIAL_DATA) : cloneData(DEFAULT_DATA);
+      const restoringProject = Boolean(Array.isArray(INJECTED_DATA) && INJECTED_DATA.length);
       selectedKey = null;
-      focusSet = new Set();
-      disabledSources = new Set();
       soloSource = null;
+      disabledSources = new Set();
       detailEl.classList.remove('open');
-      focusHudEl.classList.remove('visible');
-      rebuildDataset();
-      computeSphereTargets();
+      data = restoringProject ? cloneData(INJECTED_DATA) : cloneData(DEFAULT_DATA);
+      rebuildDataset(true);
       closeSqlModal();
+      startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 360);
       toast(restoringProject
-        ? ('Restored project schema (' + data.length + ' tables)')
-        : 'Restored built-in demo dataset');
+        ? `Restored project schema (${data.length.toLocaleString()} tables)`
+        : 'Restored 4-DB (22 tables) demo');
     });
 
     /* =====================================================================
@@ -3482,36 +3812,42 @@ CREATE TABLE payslips (
        ===================================================================== */
     window.SchemaExplorer = {
       select: selectTable,
-      reset: resetToSphere,
+      drill: drillIntoDatabase,
+      reset: resetAll,
       parseSql: parseSqlDDL,
       state: () => ({
+        mode: mode,
         selectedKey: selectedKey,
-        focusSet: Array.from(focusSet),
-        nodes: nodes.map(n => ({ key: n.key, name: n.name, x: n.cur.x, y: n.cur.y, z: n.cur.z, alpha: n.alpha })),
-        pairs: pairs.map(p => ({
-          id: p.id, s: p.s.key, t: p.t.key, self: p.self,
-          out: p.out, inn: p.inn,
-          display: p.el.getAttribute('display'),
-          opacity: p.el.style.opacity
+        soloSource: soloSource,
+        autoSpin: autoSpin,
+        currentFps: currentFps,
+        tables: nodes.length,
+        relations: links.length,
+        pairs: pairs.length,
+        dbs: sources.length,
+        galaxyOrbs: galaxyNodes.length,
+        galaxyLinks: galaxyLinks.length,
+        renderedItems: lastProjectedItems.length,
+        nodes: nodes.map(n => ({
+          key: n.key, name: n.name, source: n.source,
+          x: n.cur.x, y: n.cur.y, z: n.cur.z, alpha: n.alpha, deg: n.deg
         }))
       })
     };
 
     window.addEventListener('load', () => {
-      // Collapse sidebar by default on narrow mobile screens so 3D planet shines immediately
-      if (window.innerWidth <= 960) {
-        sideEl.classList.add('closed');
-      }
-      rebuildDataset();
+      initStars();
+      if (window.innerWidth <= 960) sideEl.classList.add('closed');
 
-      // Fit initial sphere nicely to the viewport
-      const W = svg.clientWidth || 800;
-      const H = svg.clientHeight || 520;
-      zoom = Math.max(0.55, Math.min(1.15, Math.min(W, H) / 760));
-      updateViewBox();
-      renderFrame();
+      const ro = new ResizeObserver(() => resizeCanvas());
+      ro.observe(graphWrapEl);
+      resizeCanvas();
 
-      if (INITIAL_DATA && INITIAL_DATA.length) {
+      rebuildDataset(true);
+      zoom = fitBaseZoom();
+      needsRender = true;
+
+      if (Array.isArray(INJECTED_DATA) && INJECTED_DATA.length) {
         document.getElementById('restoreDefaultBtn').textContent = 'Restore Project Schema';
       } else {
         toast('No schema found in this project · showing the built-in demo dataset');
@@ -3545,7 +3881,7 @@ def filter_schema_rows(rows, only, exclude):
 
 def schema_html(rows):
     """Render schema rows as one standalone interactive HTML file
-    (3D network + sunflower focus + ER cards; zero dependencies)."""
+    (Canvas 2D 3D network + DB Galaxy + sunflower focus + ER cards; zero dependencies)."""
     import json
     # "</" is escaped as "<\/" so a table/column name can never close the
     # inline <script> tag early; JSON allows the escaped-solidus form.
