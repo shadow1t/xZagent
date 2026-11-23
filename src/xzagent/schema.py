@@ -2784,7 +2784,10 @@ CREATE TABLE projects (
           bgCount++;
         }
         if (bgCount) {
-          ctx.strokeStyle = 'rgba(100, 116, 139, 0.30)';
+          // With a table focused, the gray mesh recedes so the orange hot
+          // edges + amber cross stubs narrate the relations (the "demo look")
+          ctx.strokeStyle = (selNode || hoverNode)
+            ? 'rgba(100, 116, 139, 0.13)' : 'rgba(100, 116, 139, 0.30)';
           ctx.lineWidth = 1.0;
           ctx.stroke();
         }
@@ -2951,14 +2954,37 @@ CREATE TABLE projects (
           const isNear = nearSet ? nearSet.has(n.key) : false;
           const force = isSel || isHover;
           if (!force && (labelMode === 'off' || drawn >= maxLabels)) continue;
-          if (!force && labelMode === 'smart' && it.z < -0.05 && !it.matches && !isNear) continue;
+          // Smart = context-only: selected/hover table, its FK relations and
+          // search matches. Unrelated planets stay dark and readable via hover
+          // (demo-clean on a 200-table galaxy instead of a wall of names)
+          if (!force && labelMode === 'smart' && !it.matches && !isNear) continue;
           const txt = n.name.length > 26 ? n.name.slice(0, 24) + '…' : n.name;
           const estW = txt.length * 6.8 + 12;
           const ly = it.sy - it.r - 8;
           if (placer(it.sx, ly, estW, 15, force)) {
-            ctx.globalAlpha = force ? 1 : (0.55 + 0.45 * Math.max(0, (it.z + 1) * 0.5));
-            const clr = isSel ? '#ffedd5' : (isNear ? '#fde68a' : (it.matches ? '#67e8f9' : '#f1f5f9'));
-            drawLabelPill(txt, it.sx, ly, clr, isSel ? 13 : (force ? 12 : 11.5), force);
+            // Color-coded context pills: selected = orange, FK relations =
+            // amber, search matches = cyan; unrelated names (Dense only)
+            // recede as dim slate behind them
+            ctx.globalAlpha = force ? 1
+              : ((labelMode === 'all' && !isNear && !it.matches)
+                  ? (0.4 + 0.35 * Math.max(0, (it.z + 1) * 0.5))
+                  : (0.6 + 0.4 * Math.max(0, (it.z + 1) * 0.5)));
+            if (isSel || isNear || it.matches) {
+              const pillBg = isSel ? 'rgba(249, 115, 22, 0.16)'
+                : (isNear ? 'rgba(251, 191, 36, 0.13)' : 'rgba(34, 211, 238, 0.13)');
+              const pillBr = isSel ? 'rgba(249, 115, 22, 0.55)'
+                : (isNear ? 'rgba(251, 191, 36, 0.38)' : 'rgba(34, 211, 238, 0.38)');
+              ctx.beginPath();
+              if (ctx.roundRect) ctx.roundRect(it.sx - estW / 2 - 4, ly - 11.5, estW + 8, 17, 5);
+              else ctx.rect(it.sx - estW / 2 - 4, ly - 11.5, estW + 8, 17);
+              ctx.fillStyle = pillBg;
+              ctx.fill();
+              ctx.lineWidth = 1;
+              ctx.strokeStyle = pillBr;
+              ctx.stroke();
+            }
+            const clr = isSel ? '#ffedd5' : (isNear ? '#fcd34d' : (it.matches ? '#67e8f9' : '#94a3b8'));
+            drawLabelPill(txt, it.sx, ly, clr, isSel ? 13 : (force ? 12 : 11.5), force || isNear);
             drawn++;
           }
         }

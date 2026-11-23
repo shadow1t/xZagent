@@ -225,6 +225,12 @@ class TestIndexRankGraph(unittest.TestCase):
         # only a stationary press toggles the sidebar (no more dead zone)
         self.assertIn("sideToggle').addEventListener('mousedown'", html)
         self.assertIn("dragMoved > 5", html)
+        # 0.2.30: table-galaxy Smart labels are context-only (selection + FK
+        # relations + matches), with color-coded relation pills and a mesh
+        # that recedes behind the hot edges while a table is focused
+        self.assertIn("labelMode === 'smart' && !it.matches && !isNear", html)
+        self.assertIn("rgba(251, 191, 36, 0.13)", html)
+        self.assertIn("rgba(100, 116, 139, 0.13)", html)
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows
