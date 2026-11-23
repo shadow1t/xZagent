@@ -2347,8 +2347,36 @@ CREATE TABLE projects (
       ctx.fillText(text, x, y);
     }
 
-    /* --- RENDER MODE A: DATABASE GALAXY (1 Orb per DB, silky-smooth for 67+ DBs) --- */
+    /* --- RENDER MODE A: DATABASE GALAXY (1 Orb per DB, silky-smooth for 67+ DBs) ---
+       When a single DB is drilled into (solo) or a table is focused, THAT DB's TABLES
+       become the planets instead, so you never bounce back to the 67-DB overview. */
+    function galaxyFocusDb() {
+      const t = selectedKey ? byKey[selectedKey] : null;
+      const src = soloSource || (t ? t.source : null);
+      return (src && isSourceVisible(src)) ? src : null;
+    }
+
+    /* Undo any 3D-focus isolation before drawing a table galaxy: every visible
+       table goes back to its sphere spot at full alpha, ready to be a planet. */
+    function restoreGalaxyTablePositions() {
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (isSourceVisible(n.source)) {
+          n.cur.x = n.sph.x;
+          n.cur.y = n.sph.y;
+          n.cur.z = n.sph.z;
+          n.alpha = 1;
+          n.tgtAlpha = 1;
+        }
+      }
+    }
+
     function renderGalaxy() {
+      const focusSrc = galaxyFocusDb();
+      if (focusSrc) {
+        renderTableGalaxy(focusSrc);
+        return;
+      }
       const projList = [];
       const projBySource = {};
       const hasSearch = searchQuery.length > 0;
@@ -2541,6 +2569,250 @@ CREATE TABLE projects (
             ctx.globalAlpha = force ? 1 : (0.55 + 0.45 * Math.max(0, (it.z + 1) * 0.5));
             const clr = it.isPrimary ? '#ffedd5' : (it.isLinked ? '#fde68a' : (g === hoveredItem ? '#ffedd5' : '#f1f5f9'));
             drawLabelPill(txt, it.sx, ly, clr, it.isPrimary ? 13 : (force ? 12 : 11.5), force);
+            drawn++;
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    /* --- RENDER MODE A2: TABLE GALAXY (a drilled DB's tables rendered as planets, FK links between them) --- */
+    function renderTableGalaxy(source) {
+      const projList = [];
+      const pMap = {};
+      const hasSearch = searchQuery.length > 0;
+      const selNode = selectedKey ? byKey[selectedKey] : null;
+      const hoverNode = (hoveredItem && hoveredItem.kind === 'table') ? hoveredItem : null;
+
+      let nearSet = null;
+      if (selNode) {
+        nearSet = new Set([selNode.key]);
+        for (let i = 0; i < selNode.fks.length; i++) {
+          const fk = selNode.fks[i];
+          const to = byKeyLower[(selNode.source + '|' + fk.ref_table).toLowerCase()] || byNameLower[fk.ref_table.toLowerCase()];
+          if (to && to.source === source && to.key !== selNode.key) nearSet.add(to.key);
+        }
+        const inc = incomingByKey[selNode.key] || [];
+        for (let i = 0; i < inc.length; i++) {
+          if (inc[i].s.source === source && inc[i].s.key !== selNode.key) nearSet.add(inc[i].s.key);
+        }
+      }
+
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (n.source !== source || n.alpha <= 0.02) continue;
+        const p = project3D(n.cur.x, n.cur.y, n.cur.z);
+        const matches = hasSearch && matchTable(n, searchQuery);
+        const item = { node: n, sx: p.sx, sy: p.sy, z: p.z, f: p.f, r: 6, matches: matches };
+        projList.push(item);
+        pMap[n.key] = item;
+      }
+
+      // Planet radius by FK connectivity (degree), same sizing family as DB orbs
+      const zoomScale = Math.min(1.75, Math.max(0.55, Math.sqrt(zoom)));
+      for (let i = 0; i < projList.length; i++) {
+        const it = projList[i];
+        const n = it.node;
+        const boost = (selectedKey === n.key) ? 1.26 : 1;
+        const degR = Math.min(26, 7.5 + Math.log2((n.deg || 0) + 2) * 3.2);
+        it.r = Math.max(4.5, degR * boost * Math.max(0.55, it.f) * zoomScale);
+      }
+
+      if (showEdges) {
+        const totalPairs = pairs.length;
+        const stride = Math.max(1, Math.ceil(totalPairs / 2600));
+        ctx.save();
+        ctx.lineCap = 'round';
+
+        // Faint internal FK links between the tables of this database
+        ctx.beginPath();
+        let bgCount = 0;
+        for (let i = 0; i < totalPairs; i += stride) {
+          const pr = pairs[i];
+          if (pr.cross) continue;
+          const a = pMap[pr.s.key];
+          const b = pMap[pr.t.key];
+          if (!a || !b) continue;
+          ctx.moveTo(a.sx, a.sy);
+          ctx.lineTo(b.sx, b.sy);
+          bgCount++;
+        }
+        if (bgCount) {
+          ctx.strokeStyle = 'rgba(100, 116, 139, 0.30)';
+          ctx.lineWidth = 1.0;
+          ctx.stroke();
+        }
+
+        // Cross-DB FKs: amber dashed stubs pointing outward (toward their far-away DBs)
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        const stubs = [];
+        for (let i = 0; i < totalPairs; i++) {
+          const pr = pairs[i];
+          if (!pr.cross) continue;
+          const homeKey = pr.s.source === source ? pr.s.key : (pr.t.source === source ? pr.t.key : null);
+          if (!homeKey) continue;
+          const it = pMap[homeKey];
+          if (!it) continue;
+          let dx = it.sx - cw * 0.5, dy = it.sy - ch * 0.5;
+          const d = Math.hypot(dx, dy);
+          if (d < 1) { dx = 0; dy = -1; } else { dx /= d; dy /= d; }
+          stubs.push({ it: it, dx: dx, dy: dy });
+          ctx.moveTo(it.sx + dx * (it.r + 3), it.sy + dy * (it.r + 3));
+          ctx.lineTo(it.sx + dx * (it.r + 26), it.sy + dy * (it.r + 26));
+        }
+        if (stubs.length) {
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
+          ctx.lineWidth = 1.3;
+          ctx.stroke();
+          ctx.setLineDash([]);
+          for (let i = 0; i < stubs.length; i++) {
+            const stt = stubs[i];
+            drawArrowHead(stt.it.sx + stt.dx * (stt.it.r + 29), stt.it.sy + stt.dy * (stt.it.r + 29), Math.atan2(stt.dy, stt.dx), 7, '#fbbf24');
+          }
+        } else {
+          ctx.setLineDash([]);
+        }
+
+        // Crisp hot edges for the selected/hovered table (same style as 3D Tables)
+        const focusKey = selectedKey || (hoverNode ? hoverNode.key : null);
+        if (focusKey) {
+          for (let i = 0; i < totalPairs; i++) {
+            const pr = pairs[i];
+            if (pr.s.key !== focusKey && pr.t.key !== focusKey) continue;
+            const a = pMap[pr.s.key];
+            const b = pMap[pr.t.key];
+            if (!a || !b) continue;
+            if (pr.self) {
+              const loopR = a.r * 1.9;
+              const sx = a.sx + a.r * 0.68;
+              const sy = a.sy - a.r * 0.68;
+              const ex = a.sx + a.r * 1.02;
+              const ey = a.sy + a.r * 0.32;
+              ctx.strokeStyle = '#22d3ee';
+              ctx.lineWidth = 2.2;
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.bezierCurveTo(a.sx + loopR * 1.2, a.sy - loopR * 1.5, a.sx + loopR * 1.9, a.sy + loopR * 0.4, ex, ey);
+              ctx.stroke();
+              drawArrowHead(ex, ey, Math.atan2(ey - (a.sy + loopR * 0.4), ex - (a.sx + loopR * 1.9)), 8, '#22d3ee');
+            } else {
+              const dx = b.sx - a.sx;
+              const dy = b.sy - a.sy;
+              const dist = Math.hypot(dx, dy) || 1;
+              const padA = a.r + 4;
+              const padB = b.r + 4;
+              let x1 = a.sx, y1 = a.sy, x2 = b.sx, y2 = b.sy;
+              if (dist > padA + padB + 6) {
+                x1 = a.sx + (dx / dist) * padA;
+                y1 = a.sy + (dy / dist) * padA;
+                x2 = b.sx - (dx / dist) * padB;
+                y2 = b.sy - (dy / dist) * padB;
+              }
+              const col = pr.cross ? '#fbbf24' : '#f97316';
+              const totalFks = pr.out.length + pr.inn.length;
+              ctx.strokeStyle = col;
+              ctx.lineWidth = totalFks > 1 ? 3.2 : 2.3;
+              ctx.setLineDash(pr.cross ? [7, 5] : []);
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              const ang = Math.atan2(y2 - y1, x2 - x1);
+              if (pr.out.length) drawArrowHead(x2, y2, ang, 8.5, col);
+              if (pr.inn.length) drawArrowHead(x1, y1, ang + Math.PI, 8.5, col);
+            }
+          }
+        }
+        ctx.restore();
+      }
+
+      // 2. Depth-sort table planets back-to-front
+      projList.sort((a, b) => a.z - b.z);
+      lastProjectedItems = projList;
+
+      for (let i = 0; i < projList.length; i++) {
+        const it = projList[i];
+        const n = it.node;
+        const isSel = selectedKey === n.key;
+        const isHover = hoveredItem === n;
+        const isNear = nearSet ? nearSet.has(n.key) : false;
+
+        let alpha = 0.36 + 0.64 * Math.max(0, (it.z + 1) * 0.5);
+        if (hasSearch && !it.matches && !isSel && !isHover && !isNear) alpha *= 0.18;
+        else if (nearSet && !isNear && !isHover && !isSel) alpha *= 0.3;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        if (isSel) {
+          ctx.beginPath();
+          ctx.arc(it.sx, it.sy, it.r + 11, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(249, 115, 22, 0.38)';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(it.sx, it.sy, it.r + 6, 0, Math.PI * 2);
+          ctx.strokeStyle = '#f97316';
+          ctx.lineWidth = 2.4;
+          ctx.stroke();
+        } else if (isHover || it.matches || isNear) {
+          ctx.beginPath();
+          ctx.arc(it.sx, it.sy, it.r + 7, 0, Math.PI * 2);
+          ctx.strokeStyle = isHover ? '#f97316' : (it.matches ? '#22d3ee' : '#fbbf24');
+          ctx.lineWidth = 2.1;
+          ctx.stroke();
+        }
+
+        const grad = ctx.createRadialGradient(it.sx - it.r * 0.3, it.sy - it.r * 0.3, it.r * 0.1, it.sx, it.sy, it.r);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.28, isSel ? '#f97316' : n.color);
+        grad.addColorStop(1, '#0b1326');
+        ctx.beginPath();
+        ctx.arc(it.sx, it.sy, it.r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.lineWidth = (isHover || isSel) ? 2.4 : 1.25;
+        ctx.strokeStyle = isSel ? '#ffedd5' : (isHover ? '#ffffff' : 'rgba(255,255,255,0.55)');
+        ctx.stroke();
+
+        if (it.r >= 13) {
+          ctx.font = '700 ' + Math.max(9.5, Math.min(12, it.r * 0.52)).toFixed(0) + 'px Inter, system-ui, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(n.deg || 0), it.sx, it.sy + 0.5);
+        }
+        ctx.restore();
+      }
+
+      // 3. Collision-free labels (selected & hovered table always on top)
+      if (labelMode !== 'off' || selNode || hoverNode || hasSearch) {
+        const placer = createLabelPlacer();
+        const maxLabels = labelMode === 'all' ? 90 : 40;
+        let drawn = 0;
+        const labelOrder = projList.slice().sort((a, b) => {
+          const pa = (a.node.key === selectedKey ? 1000 : 0) + (a.node === hoveredItem ? 500 : 0) + ((nearSet && nearSet.has(a.node.key)) ? 250 : 0) + (a.matches ? 50 : 0) + a.z;
+          const pb = (b.node.key === selectedKey ? 1000 : 0) + (b.node === hoveredItem ? 500 : 0) + ((nearSet && nearSet.has(b.node.key)) ? 250 : 0) + (b.matches ? 50 : 0) + b.z;
+          return pb - pa;
+        });
+        for (let i = 0; i < labelOrder.length; i++) {
+          const it = labelOrder[i];
+          const n = it.node;
+          const isSel = n.key === selectedKey;
+          const isHover = n === hoveredItem;
+          const isNear = nearSet ? nearSet.has(n.key) : false;
+          const force = isSel || isHover;
+          if (!force && (labelMode === 'off' || drawn >= maxLabels)) continue;
+          if (!force && labelMode === 'smart' && it.z < -0.05 && !it.matches && !isNear) continue;
+          const txt = n.name.length > 26 ? n.name.slice(0, 24) + '…' : n.name;
+          const estW = txt.length * 6.8 + 12;
+          const ly = it.sy - it.r - 8;
+          if (placer(it.sx, ly, estW, 15, force)) {
+            ctx.globalAlpha = force ? 1 : (0.55 + 0.45 * Math.max(0, (it.z + 1) * 0.5));
+            const clr = isSel ? '#ffedd5' : (isNear ? '#fde68a' : (it.matches ? '#67e8f9' : '#f1f5f9'));
+            drawLabelPill(txt, it.sx, ly, clr, isSel ? 13 : (force ? 12 : 11.5), force);
             drawn++;
           }
         }
@@ -2907,7 +3179,7 @@ CREATE TABLE projects (
         fpsFrames = 0;
         fpsLastTime = now;
         const visLabel = mode === 'galaxy'
-          ? `${lastProjectedItems.length} DB orbs`
+          ? (galaxyFocusDb() ? `${lastProjectedItems.length} table orbs` : `${lastProjectedItems.length} DB orbs`)
           : `${lastProjectedItems.length.toLocaleString()} tables`;
         perfPillEl.innerHTML = `Canvas 2D · ${visLabel} · <b>${Math.max(1, currentFps || 60)} fps</b>`;
       }
@@ -2999,9 +3271,10 @@ CREATE TABLE projects (
       requestAnimationFrame(() => {
         resizeCanvas();
         if (mode === 'galaxy') {
-          const g = galaxyBySource[t.source];
-          if (g) startTransition(orientCameraToPoint(g.cur.x, g.cur.y, g.cur.z), fitBaseZoom(), { x: 0, y: 0 }, 380);
-          else needsRender = true;
+          if (galaxyFocusDb()) {
+            restoreGalaxyTablePositions();
+            startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 360);
+          } else needsRender = true;
         } else if (focusIsolate) {
           computeFocusTargets(key);
         } else {
@@ -3016,7 +3289,7 @@ CREATE TABLE projects (
         return;
       }
       detailModeBarEl.innerHTML =
-        `<button id="dmGalaxy" class="${mode === 'galaxy' ? 'on-galaxy' : ''}" title="Show this table's DB & cross-DB links in DB Galaxy">🌌 DB Galaxy</button>` +
+        `<button id="dmGalaxy" class="${mode === 'galaxy' ? 'on-galaxy' : ''}" title="This table as a highlighted planet among its database's table planets">🌌 DB Galaxy</button>` +
         `<button id="dmFocus" class="${mode === 'graph' && focusIsolate ? 'on' : ''}" title="Isolate this table & its direct relations">🌻 3D Focus</button>` +
         `<button id="dmSphere" class="${mode === 'graph' && !focusIsolate ? 'on' : ''}" title="Highlight this table inside the full 3D Sphere">🌐 3D Sphere</button>`;
 
@@ -3744,14 +4017,15 @@ CREATE TABLE projects (
         requestAnimationFrame(() => {
           resizeCanvas();
           if (m === 'galaxy') {
-            const targetSrc = (selectedKey && byKey[selectedKey]) ? byKey[selectedKey].source : soloSource;
-            const g = targetSrc ? galaxyBySource[targetSrc] : null;
-            const tRot = g ? orientCameraToPoint(g.cur.x, g.cur.y, g.cur.z) : { rx: -0.26, ry: 0.52 };
-            startTransition(tRot, fitBaseZoom(), { x: 0, y: 0 }, 360);
-            if (selectedKey && byKey[selectedKey]) {
-              toast(`DB Galaxy · highlighting "${byKey[selectedKey].name}" in ${srcLabel(targetSrc)}`);
-            } else if (soloSource) {
-              toast(`DB Galaxy · highlighting ${srcLabel(soloSource)}`);
+            if (galaxyFocusDb()) restoreGalaxyTablePositions();
+            startTransition({ rx: -0.26, ry: 0.52 }, fitBaseZoom(), { x: 0, y: 0 }, 360);
+            if (galaxyFocusDb()) {
+              const tt = selectedKey ? byKey[selectedKey] : null;
+              if (tt) {
+                toast(`DB Galaxy · "${tt.name}" among its ${sourceTableMap[tt.source].length} table planets in ${srcLabel(tt.source)}`);
+              } else if (soloSource) {
+                toast(`DB Galaxy · ${sourceTableMap[soloSource].length} table planets of ${srcLabel(soloSource)}`);
+              }
             }
           } else if (selectedKey) {
             if (focusIsolate) {
@@ -4135,6 +4409,7 @@ CREATE TABLE payslips (
   </script>
 </body>
 </html>
+
 
 """
 

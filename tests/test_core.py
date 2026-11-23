@@ -206,6 +206,10 @@ class TestIndexRankGraph(unittest.TestCase):
         self.assertIn("computeSphereTargets", html)  # back to sphere positions on reset
         self.assertIn("galaxyNodes", html)        # DB Galaxy orbit for huge corpora
         self.assertIn("autoSpin", html)          # spin guard for large corpora
+        # 0.2.26: inside a solo DB (or with a table focused), DB Galaxy draws
+        # that DB's TABLES as planets instead of bouncing back to the DB overview
+        self.assertIn("renderTableGalaxy", html)
+        self.assertIn("galaxyFocusDb", html)
 
     def test_schema_rows_filter_only_exclude(self):
         from xzagent.schema import filter_schema_rows
